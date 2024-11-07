@@ -1,0 +1,1 @@
+This project is an open-source transcranial-magnetic-stimulator, including some code for VERY SIMPLE controls for pulse-firing system and hopefully charge-controller (coming later), but mainly it's for documentation of the system design, janky schematics, some pictures of circuits, some pictures of coil-designs I've tried as I remember how E&M works lol.
