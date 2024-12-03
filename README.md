@@ -3,6 +3,7 @@ This project is an open-source transcranial-magnetic-stimulator, including some 
 To be clear, this is NOT a legitimate medical device and should not be seen as an alternative to going to get legitimate TMS treatment. Any treatment with this janky, built-in-my-garage version of TMS isn't gauranteed to work, or do anything as I have no way to verify that it works such as an MRI. This is a dangerous device involving energy levels more than high enough to stop your heart, kill you and do alot of damage.
 
 I plan on putting both designs of pulse-generators in here and documenting each. 
+
 Design #1; SCR type Pulse-Generator.
     This is the first design of pulse generator I built and it is great for handing rediculous energy levels at consistent frequencies/patterns such as the standard 5 & 10hz protocols used in early depression-treatment protocols. However I ran into limitations when I wanted to try more complex pulse patterns such as "Theta-Burst) which is a short burst of 50hz pulses, repeating at 4-5hz. The SCR (Silicon-Controlled-Rectum-Frier) or thyristor, is a switchable diode which are latching. So for the task of discharging a capacitor through a coil; they completely drain the capacitor, but because of this steady decrease of current, the flyback effect from the TMS coil isn't too bad.
 
