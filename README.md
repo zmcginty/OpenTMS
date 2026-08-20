@@ -32,3 +32,7 @@ Design #4; H-Bridge Switch topology IGBT Pulse Generator (Not Built yet)
 Measurement System
 When running the newer IGBT based Pulse-Generators I monitor the voltages accross each IGBT to make sure I don't exceed Vce (in fact, I try to stay below 2.5kV for my 3.3kV rated IGBTs). To measure this I use a basic oscilliscope and high-voltage differential probes. The HV Diff Probes I use are Micsig DP20003 High Voltage Differential Probe 5600V, 100MHz. I measure voltage of the main capacitor bank using a similar HV Diff Probe, but lower voltage (1300V).
 I also measure current through the coil, as well as current to the main capacitors. For this I use either a Current-Transformer (TEKTRONIX A621 AC Current Probe 5 Hz To 50kHz 2000A BNC plug) Or a rogowski coil I got from https://powertekuk.com. I had them make a custom rogowski coil because I had trust issues with my other current transformer, and never got reliable readings from any shunt resistor I tried... But now that I've gotten the rogowski, I've confirmed that it agrees with the TEKTRONIX A621.
+
+TODO: 
+    1. Build a charge-control circuit. I don't trust a uC to do this job. Going to use a comparator, compare to a DAC output from uC, so if uC hangs DAC falls to 0 and turns off charge circuit.
+    2. Build phase-control recitifier to replace HV charge circuit rectifier, this will also get rid of variac and be tied into charge system. Might need some fancy PID... thingy to control phase/firing angle to let more/less current through to charge caps. Or say fuck it and just bang-bang control it.
