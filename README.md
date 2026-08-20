@@ -36,3 +36,4 @@ I also measure current through the coil, as well as current to the main capacito
 TODO: 
     1. Build a charge-control circuit. I don't trust a uC to do this job. Going to use a comparator, compare to a DAC output from uC, so if uC hangs DAC falls to 0 and turns off charge circuit.
     2. Build phase-control recitifier to replace HV charge circuit rectifier, this will also get rid of variac and be tied into charge system. Might need some fancy PID... thingy to control phase/firing angle to let more/less current through to charge caps. Or say fuck it and just bang-bang control it.
+    3. Process feedback signal from Gate-Drivers (fiber-optic RX) to tell if we're missing pulses. What would we do if we miss pulses? I dunno yet..... shut off another redundant switch to shut off charge circuit?
