@@ -63,46 +63,13 @@
     "ssh_key": ""
   },
   "meta": {
-    "filename": "TMS_IGBT_And_Gate_Drive.kicad_prl",
+    "filename": "TMS_Pulse_Control.kicad_prl",
     "version": 5
   },
   "net_inspector_panel": {
-    "col_hidden": [
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false
-    ],
-    "col_order": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9
-    ],
-    "col_widths": [
-      156,
-      141,
-      103,
-      71,
-      103,
-      103,
-      103,
-      74,
-      103,
-      103
-    ],
+    "col_hidden": [],
+    "col_order": [],
+    "col_widths": [],
     "custom_group_rules": [],
     "expanded_rows": [],
     "filter_by_net_name": true,
@@ -114,7 +81,7 @@
     "show_unconnected_nets": false,
     "show_zero_pad_nets": false,
     "sort_ascending": true,
-    "sorting_column": 0
+    "sorting_column": -1
   },
   "open_jobsets": [],
   "project": {
