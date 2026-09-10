@@ -1,0 +1,5 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "ADS8699IPWR") (type "KiCad") (uri "${KIPRJMOD}/ADS8699IPWR.pretty") (options "") (descr ""))
+	(lib (name "AD5683RARMZ") (type "KiCad") (uri "/Users/furiousgeorge/digikey-partner-kicad-library/Hammond Manufacturing/Untitled/AD5683RARMZ.pretty") (options "") (descr ""))
+)
