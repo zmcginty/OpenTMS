@@ -1,0 +1,3 @@
+This is a sub-project of the pulse-generator; a charge controller arduino sketch for reading an ADC to read divided capacitor voltage, and toggling an output to turn on or off the charge circuit. No fancy porpotional control yet...
+
+There's also a python script which takes in voltage values from a serial port and plots them using pyqtgraph lib in real-time and can log data for analysis. This is basically for tuning the ADC system given how noisy the environment is around this pulse-generator. So it allows me to tune how I average ADC samples and so on, so I don't get any major jumps or noise.
