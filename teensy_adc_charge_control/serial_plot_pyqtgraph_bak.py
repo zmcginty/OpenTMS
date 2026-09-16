@@ -8,9 +8,9 @@ updates -- matplotlib's redraw path is not built for high-rate streaming,
 pyqtgraph is.
 
 Usage:
-    python serial_plot_pyqtgraph.py /dev/cu.usbmodem135769401
-    python serial_plot_pyqtgraph.py /dev/cu.usbmodem135769401 --single
-    python serial_plot_pyqtgraph.py COM5 --max-abs-volts 10 --max-jump 0.01 --debug
+    python serial_plot_pyqtgraph.py
+    python serial_plot_pyqtgraph.py --port /dev/cu.usbmodem135769401 --single
+    python serial_plot_pyqtgraph.py --max-abs-volts 10 --max-jump 0.01 --debug
 
 Dependencies:
     pip install pyqtgraph pyqt5 pyserial numpy
@@ -18,7 +18,6 @@ Dependencies:
 
 import argparse
 import re
-import signal
 import sys
 import time
 from collections import deque
@@ -37,9 +36,7 @@ SINGLE_LINE_RE = re.compile(r"^[-+]?\d*\.?\d+$")
 
 def parse_args():
     p = argparse.ArgumentParser(description="Fast live plot of raw/filtered voltage from serial")
-    p.add_argument("port", nargs="?", default="/dev/cu.usbmodem176191001",
-                    help="Serial port device, e.g. /dev/cu.usbmodem176191001, "
-                         "/dev/ttyACM0, COM5 (default: %(default)s)")
+    p.add_argument("--port", default="/dev/cu.usbmodem176191001", help="Serial port")
     p.add_argument("--baud", type=int, default=115200, help="Baud rate (default 115200)")
     p.add_argument("--window", type=int, default=5000,
                    help="Initial number of most recent samples visible on screen "
@@ -354,22 +351,6 @@ def main():
     timer = QtCore.QTimer()
     timer.timeout.connect(update)
     timer.start(args.refresh_ms)
-
-    # --- Ctrl+C handling ---
-    # PyQt's event loop runs mostly in C++, so a plain try/except
-    # KeyboardInterrupt around app.exec_() is unreliable: Python only gets a
-    # chance to raise the signal when it briefly regains control (which our
-    # QTimer callback above does provide, every --refresh-ms), but if an
-    # exception is raised *inside* that Qt-invoked callback, PyQt swallows it
-    # instead of letting it propagate out of app.exec_(). Installing an
-    # explicit SIGINT handler that calls app.quit() sidesteps that entirely:
-    # it stops the event loop cleanly, app.exec_() returns normally, and the
-    # try/finally below still runs to print the summary and close the port.
-    def handle_sigint(signum, frame):
-        print("\nCtrl+C received, shutting down...", flush=True)
-        app.quit()
-
-    signal.signal(signal.SIGINT, handle_sigint)
 
     print("Streaming... close the plot window or Ctrl+C in the terminal to stop.\n",
           flush=True)
