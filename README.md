@@ -1,84 +1,154 @@
-This project is an open-source transcranial-magnetic-stimulator, including some code for simple control of pulse-firing system as well as a charge-controller. 
+# Open-Source Transcranial Magnetic Stimulator
 
-To be clear, this is NOT a legitimate medical device and should not be seen as an alternative to going to get legitimate TMS treatment. Any treatment with this janky, built-in-my-garage version of TMS isn't gauranteed to work, or do anything as I have no way to verify that it works such as an MRI. This is a dangerous device involving energy levels more than high enough to stop your heart, kill you and do alot of damage.
+An open-source transcranial magnetic stimulator (TMS) project, including coil designs, pulse-generator hardware, and control/charging circuitry.
 
+> **Safety Notice**
+> This is **not** a legitimate medical device and is not a substitute for real TMS treatment. This is an experiment I built in my garage, and I cannot verify that it does what it's supposed to (if anyone wants to build an open-source MRI.... let me know...) This device is dangerous, it operates at energy levels more than enough to stop your heart, kill you, blow up and do lots of damage. If you're going to play with high energy pulsed power systems; be careful.
 
-# TMS Coils
-+ I primarily use two types of coils; single coils, and figure-8 coils. Both single and fig-8 coils can be either single-layer or multi-layer flat coils with no core (use air as core). I basically just used the same general architecture in these designs from various research papers and what little information released by tms-coil manufacturers. Below is an image of a figure-8 CloudTMS coil which influenced the coils I built.
+## Table of Contents
+- [TMS Coils](#tms-coils)
+- [Coil Cooling](#coil-cooling)
+- [Coil Materials](#coil-materials)
+- [IGBT Switches](#igbt-switches)
+- [Gate Drivers](#gate-drivers)
+- [Measurement System](#measurement-system)
+- [Charging Circuit](#charging-circuit)
+- [Pulse-Generator Designs](#pulse-generator-designs)
+- [Charge-Control Circuit (In Progress)](#charge-control-circuit-in-progress)
+- [Useful Resources](#useful-resources)
+- [TODO](#todo)
 
-<center><img src="./Example_Images/CloudTMS_Coil.png" alt="drawing" width="200"/></center>
+---
 
-+ Since I've transistioned to higher-speed pulse rates and higher pulse energies I've found it necessary to have active cooling for the coils and have tried a few different methods. One of my favorite designs is similar to the CloudTMS coil using hollow copper tube (sold for air-conditioning systems), insulating the tube with some kind of heat-shrink. PTFE heat-shrink works quite well because it's a good dielectric, thin-wall even after shrinking, withstands high-temp, and doesn't allow coil to move as much compared to other thicker heat-shrink. Note; PTFE heat-shrink requires pretty high temp to fully shrink. 
-    - For the coils I've made, I buy 4mm OD, 3mm ID copper tube in 5m sections, and buy 4.5mm 4:1 PTFE heat-shrink in bulk. To get any kind of long section of heat-shrink onto such a long tube takes creativity, patience and compressed air to create an air-cushion between the copper tube and heat-shrink to easily push it on. Then I'll use a janky, custom coil-winding jig to wind a coil in either single layer or multi-layer(Note multi-layer is just winding randomly around a bobbin, not stacking multiple single layers... I'm not that fancy yet, but they seem to work well). You'll want to put something close to the ID of the copper tube to keep it from collapsing during the first few windings, and pull it out after winding's done. I find that weedwacker cable works well for this. Hold coils together with some tape while you pot them in some epoxy. 
+## TMS Coils
 
-+ Potting these coils in epoxy helps greatly with general stability of coil and noise, it keeps the coils in place when they want to fight eachother. I've tried holding coils together with hot-glue which does work, but those coils are very loud which doesn't inspire much confidence increasing power.. 
+I primarily build two coil geometries — single coils and figure-8 coils. What I've focused on are air-core windings in either single-layer or multi-layer form. The general architecture is adapted from research papers and the limited information published by commercial TMS coil manufacturers. The figure-8 CloudTMS coil (below) was a major influence on my designs in terms of hollow copper conductor carrying coolant.
+
+<p align="center"><img src="./Example_Images/CloudTMS_Coil.png" alt="CloudTMS coil" width="200"/></p>
+
+As I moved to higher pulse rates and energies, active cooling became necessary. My preferred approach, similar to the CloudTMS design, uses hollow copper tubing (sold for HVAC/refrigeration) insulated with PTFE heat-shrink. PTFE works well because it's a good dielectric, stays thin-walled after shrinking, tolerates high temperatures, and holds the coil shape better than thicker heat-shrink alternatives — though it does require fairly high heat to shrink fully.
+
+**Build process:**
+- Source 4mm OD / 3mm ID copper tube (5m sections) and 4.5mm, 4:1 PTFE heat-shrink in bulk.
+- Feeding heat-shrink onto a long tube run takes patience — compressed air, used to create an air cushion between tube and shrink-wrap, makes this much easier.
+- Wind the coil on a custom jig, either single-layer or multi-layer (multi-layer here just means winding randomly around a bobbin rather than stacking discrete single-layer coils).
+- Insert something into the copper tube close to the tube's ID (weed-wacker cable works well) during the first few windings to prevent the tube from collapsing, then remove it once winding is complete.
+- Hold the coil together with tape ahead of potting.
+
+<p align="center">
+  <img src="./TMS_Coils/figure_8_multilayer_coil_naked_4.jpg" alt="Coil before potting" width="200"/>
+  <img src="./TMS_Coils/figure_8_multilayer_coil_naked_2.jpg" alt="Coil before potting" width="200"/>
+</p>
+<p align="center"><em>Example coil before potting</em></p>
+
+Potting the coil in epoxy significantly improves mechanical stability and reduces noise by keeping the windings from moving against each other under pulse forces. Hot glue works as an alternative but produces coils that are noticeably louder in operation — not confidence-inspiring at higher power levels.
+
+<p align="center"><img src="./TMS_Coils/figure_8_multilayer_coil_potted_4.jpg" alt="Coil after potting" width="200"/></p>
+<p align="center"><em>Example coil after potting</em></p>
 
 ## Coil Cooling
-+ These coils with hollow copper tube are meant to have cooland pumped through them to cool them. For a long time, I used mineral-oil as a coolant which is pretty thin for oil, but much thicker than water. To achieve proper cooling (maintain ~40C) I needed about 150-200psi to push enough through the small ID of the coil. When running higher energy levels, I added a water-chiller and heat-exchanger to further cool the oil before going to the coil. 
-+ Recently I found that diaphram pumps are electrically insulated (to some extent) through the diaphram from the fluid they're pumping, so I found that using a diaphram pump and distilled water as coolant is much more effective and simple. Though there is a risk of the water/coolant being at high-voltage. 
 
-## Materials used to build Coils
-+ Hollow copper tube used to wind water-cooled coils; Cheap and easy to find copper tube typically used for refridgeration. https://www.amazon.com/dp/B082FDVNC5?lv=shuf&channelId=500&plpRedirect=mhFallback&th=1
+Coils built from hollow copper tube are cooled by pumping coolant through the winding itself.
 
-+ Fiberglass resin sheet used for application-side of coil; They're sturdy, and are generally good electrical insulators, and seem to be permeable to magnetic fields (I saw in a commercial coil I took apart they used what looked like FR4 fiberglass, like in a circuit board). https://www.amazon.com/dp/B0DYT28W8W?lv=shuf&channelId=500&plpRedirect=mhFallback&th=1
-    
-+ Epoxy potting compound; MAX EPC. This is easy to find and relatively cheap. It's a good electrical insulator, and decent thermal conductor. If you're building a coil from hollow copper tube and running coolant through the conductor itself, you can use MAX MCR, which has lower thermal conductivity. https://www.amazon.com/dp/B07PMTMKZQ?lv=shuf&channelId=500&plpRedirect=mhFallback
+- **Mineral oil:** Used for a long time — thinner than typical oils but thicker than water. Maintaining ~40°C required roughly 150–200 psi to push enough flow through the coil's small ID. At higher energy levels, I added a water chiller and heat exchanger to pre-cool the oil.
+- **Distilled water:** More recently, I've switched to distilled water paired with a diaphragm pump, since the diaphragm provides a degree of electrical isolation between the pump mechanism and the fluid. This is simpler and more effective overall, though there is still a risk of the coolant loop reaching high voltage.
 
-# IGBT switches: 
-My current switch of choice is the Infineon/Eupec FZ1200R33KF2, why? because they're cheap and they can handle alot of power. I've found them on ebay ranging from $100 to $400 each, and I've put 8kA pulse through just one. Just make sure you have enough snubber capacitors/circuitry to keep the voltage accross them less than 3.3kV. 
+## Coil Materials
 
-## Gate-Drivers
-With this IGBT, I've used two gate drivers from Power Integrations; 
-+ 2SC0535T2G0-33; This did its job but doesn't have features like active clamping to protect the IGBT from over-voltage during turn-off spikes. You also have to build up a PCB with capacitors and gate turn-on and turn-off resistors.
-+ 1SD418F2-FZ1200R33KF2; This is made specifically for the FZ1200R33KF2 IGBT, so it just bolts onto the pads. You just have to feed the gate-driver with 15VDC, I'm using a 1A supply. These gate drivers have two fiber-optic ports; one input signal, one output/status signal. So I made some PCBs with the correct HFBR fiber-optic transmitter(AFBR-1624Z) and receiver(AFBR-1624Z) modules which is driven by the Teensy 4.1 (through 3.3V->5V level shifter).
+| Material | Purpose | Notes |
+|---|---|---|
+| [Hollow copper tube](https://www.amazon.com/dp/B082FDVNC5) | Water-cooled coil winding | Standard refrigeration-grade tube; cheap and widely available |
+| [Fiberglass resin sheet](https://www.amazon.com/dp/B0DYT28W8W) | Application-side coil face | Sturdy, good electrical insulator, and appears permeable to magnetic fields — a disassembled commercial coil used what looked like FR4 fiberglass (PCB-grade) |
+| [MAX EPC epoxy potting compound](https://www.amazon.com/dp/B07PMTMKZQ) | Coil potting | Inexpensive, good electrical insulator, decent thermal conductivity. For tube-cooled coils, MAX MCR (lower thermal conductivity) is also an option |
 
+---
 
-# Measurement System
+## IGBT Switches
+
+My current switch of choice is the **Infineon/Eupec FZ1200R33KF2** — inexpensive and capable of handling substantial power. Prices on eBay range from ~$100–$400, and I've pushed 8kA pulses through a single unit. Adequate snubber capacitance/circuitry is essential to keep the voltage across the device under its 3.3kV rating (I target a safety margin below that).
+
+## Gate Drivers
+
+I've used two Power Integrations gate drivers with this IGBT:
+
+- **2SC0535T2G0-33** — Functional, but lacks features like active clamping to protect against turn-off voltage spikes. Requires a custom PCB with gate turn-on/turn-off resistors and capacitors.
+- **1SD418F2-FZ1200R33KF2** — Purpose-built for the FZ1200R33KF2; bolts directly onto the device pads. Requires only a 15VDC supply (I use a 1A source). It communicates over two fiber-optic channels (input signal and output/status), which I drive with custom PCBs using AFBR-1624Z HFBR transmitter/receiver modules, controlled by a Teensy 4.1 through a 3.3V→5V level shifter.
+
+---
+
+## Measurement System
+
 ### Differential Voltage Measurement
-When running IGBT based Pulse-Generators it's important to monitor the voltages accross each IGBT's collector and emitter pins (Vce) so you don't exceed its rating. To be safe, it's best to keep some safety margin here; I try to stay below 2.5kV for my 3.3kV rated IGBTs. To measure this I use a basic oscilliscope and, since these IGBTs are switching high-side voltage, you'll have to use a high-voltage differential probe. The HV Diff Probes I use are Micsig DP20003 High Voltage Differential Probe 5600V, 100MHz. I measure voltage of the main capacitor bank using a similar HV Diff Probe, but lower voltage (1300V).
+Monitoring Vce (collector-emitter voltage) across each IGBT is critical to staying within its rating — I keep a safety margin and stay below 2.5kV on 3.3kV-rated devices. Since these switches operate on the high side, measurement requires a high-voltage differential probe: I use a **Micsig DP20003** (5600V, 100MHz). A similar, lower-range HV differential probe (1300V) monitors the main capacitor bank voltage.
+
 ### Current Measurement
-To measure current I've tried a few types of measurement, initially tried a shunt resistor, but never got a signal I trusted.I found the two below to be the best;
-1. Rogowski-Coil; Great for measuring really high current, there's no iron core to saturate, they can measure AC or DC current. But you can't really find calibrated probes used on Ebay, and to get a useful signal on a scope, you need a calibrated integrator circuit. So I ended up spending alot on a calibrarted rogowski coil from https://powertekuk.com. I got one like this; https://powertekuk.com/cwtmini
-2. Current-Transformer (CT); I use a Tektronix A621 AC Current Probe, which says it can measure up to 2kA. These can be found pretty cheap on Ebay ($100 - $500). And though it says it can only measure 2kA, I've seen it agree with the Powertek Rogowski coil up to about 8kA.
+A shunt resistor was my first attempt but never produced a trustworthy signal. Two methods have worked well since:
 
+1. **Rogowski coil** — Excellent for high current measurement (AC or DC, no iron core to saturate), but calibrated probes are hard to find secondhand, and a calibrated integrator circuit is needed to get a usable scope signal. I use a calibrated coil from [PowertekUK](https://powertekuk.com) — specifically the [CWTMini](https://powertekuk.com/cwtmini).
+2. **Current transformer (CT)** — I use a Tektronix A621 AC current probe (rated to 2kA, available on eBay for $100–$500). In practice, it agrees with the Powertek Rogowski coil up to roughly 8kA despite the rated limit.
 
-# Charging Circuit 
-I've used the same general janky, open-loop charging circuit for a while; this consists of mains power going into a variable-transformer which goes to a microwave-oven-transformer to step it up to higher voltage, which is then rectified with a full-bridge rectum-fryer. This rectified DC then goes to the large discharhe capacitor which is discharged through the coil by a high-side switch (either latching-SCR or non-latching-IGBT).
+---
 
-## Microwave-Oven Transformers
-For the current two-switch flyback pulse-generator I'm using two relatively-matched Microwave-Oven-Transformers (MOTs). I do this by checking the voltage and phase of both transformers are pretty close to eachother. (TODO: insert measurements, or resource)
-With the charge circuit drawing about 15A at 120V, I've found that two matched transformers only need air-cooling to keep them below about 60C.
-Past designs have used a single MOT with low-pressure mineral-oil cooling, which worked well up to about 14A. But mineral-oil cooling systems and pumps are complicated and leak everywhere.
+## Charging Circuit
 
-# Pulse-Generator Designs
-### Design #1; SCR type Pulse-Generator.
-This is the first design of pulse generator I built and it is great for handing rediculous energy levels at consistent frequencies/patterns such as the standard 5 & 10hz protocols used in early depression-treatment protocols. However I ran into limitations when I wanted to try more complex pulse patterns such as "Theta-Burst) which is a short burst of 50hz pulses, repeating at 4-5hz. The SCR (Silicon-Controlled-Rectum-Frier) or thyristor, is a switchable diode which are latching. So for the task of discharging a capacitor through a coil; they completely drain the capacitor, but because of this steady decrease of current, the flyback effect from the TMS coil isn't too bad.
+The charging circuit is a simple, open-loop design: mains power feeds a variable transformer (variac), which drives a microwave oven transformer (MOT) to step up voltage. The stepped-up AC is rectified by a full-bridge rectifier and used to charge the main discharge capacitor bank, which is then discharged through the coil via a high-side switch (latching SCR or non-latching IGBT).
 
-### Design #2; Single IGBT type Pulse-Generator.
-The IGBT based pulse generator allows much more control of energy through the treatment coil. And since IGBT switches aren't latching like the SCR, you can turn them on then back off in short duration pulses, only partially discharging energy storage capacitors. This allows doing pulse patterns such as "Theta-Burst" as mentioned above. However, since you're shutting off the switch as current is flowing through the TMS-coil you're going to have a great deal of flyback to deal with so as not to fry IGBTs with this potentially high reverse voltage spike (This was how I fried many IGBTs). For flyback you'll need one hell of a flyback diode accross the TMS coil, as well as snubber capacitors accross the IGBT(s) to handle the spikes caused by parasitic inductance of wires/cables/bussbars and such. You'll want to get some high-voltage differential oscilliscope probes to measure important voltages, such as voltage accross the IGBT. So that as you're testing and tuning the system, you can stay within the limits of the switch you're using. 
+### Microwave Oven Transformers
+The current two-switch flyback pulse generator uses two matched MOTs (matched by checking voltage and phase agreement between units — *measurements/resources TODO*). Drawing ~15A at 120V, two matched transformers stay below ~60°C with air cooling alone.
 
-**NOTE:** this design used a flyback diode accross the coil, so the coil current waveform has a sharp rising edge, but a slow falling edge as the flyback current is dissipated through the coil+resistance of the wires and the diode. The single IGBT setup seemed to work well and was relatively simple compared to the two-switch flyback, but due to not recycling the flyback energy in the coil, I found myself limited by the 120V 15A circuit charging the capacitor bank.
+Earlier designs used a single MOT with low-pressure mineral-oil cooling, which worked up to ~14A — but oil cooling systems and pumps added complexity and were prone to leaks.
 
-### Design #3; Two-Switch Flyback IGBT Pulse Generator.
-Compared to the single IGBT pulse gen, the two switch design recycles more of the pulse energy than the single IGBT. The two-switch setup also has a sharp rising and falling edge of current to the coil, which increases the di-dt which results in a stronger but shorter magnetic field. This setup seems to increase efficiency so my charging circuit current draw decreased significantly. This setup seems to be more effective at stimulating atleast muscles/nerves than the single switch IGBT running at higher peak pulse current. I believe this is because the faster edge rates cause a faster change in magnetic field which (I think) induces greater currents in muscle/tissue. 
+---
 
-### Design #4; H-Bridge Switch topology IGBT Pulse Generator (Not Built yet)
-This design should double the coil pulse current compared to the two-switch flyback topology, because of the ability to reverse the current flow. Though this setup feels quite complicated in terms of how to position 4 IGBT switches and needed snubber capacitors so that the added parasitic inductance doesn't decrease the energy capability of the system overall. 
+## Pulse-Generator Designs
+
+### Design #1 — SCR-Based Pulse Generator
+<p align="center"><img src="./Design 1 SCR-Type_Pulse-Generator/SCR-Type_TMS_1.jpg" alt="SCR switch bottom-right" width="200"/></p>
+<p align="center"><em>SCR-switch pulse generator (SCRs are bottom-right. Main capacitor front left. Rectifier behind capacitor. and mineral-oil cooled microwave transformer behid rectifier. </em></p>
+
+The first design I built. It handles very high energy levels well at consistent frequencies/patterns (e.g., the standard 5Hz/10Hz protocols used in early depression-treatment research). Its limitation is pattern flexibility: an SCR/thyristor is a latching switchable diode, so once triggered it fully discharges the capacitor. This steady current decay is gentle on flyback effects but rules out more complex patterns like Theta-Burst (50Hz bursts repeating at 4–5Hz).
+
+### Design #2 — Single-IGBT Pulse Generator
+<p align="center"><img src="./Design 2 Single IGBT-Type_Pulse-Generator/Gate-Drive_to_IGBTs.jpg" alt="Single-IGBT (Two IGBTs in parallel)" width="200"/></p>
+<p align="center"><em>Single IGBT topology (note; two IGBTs in parallel), you can also see gate driver I used before using ones built specifically for the IGBT module</em></p>
+
+Since IGBTs aren't latching, they can be switched on and back off within a short pulse, allowing partial capacitor discharge and enabling patterns like Theta-Burst. The tradeoff is significant flyback voltage when interrupting current through the coil — this destroyed several IGBTs before I addressed it with a robust flyback diode across the coil and snubber capacitors across the IGBT(s) to absorb spikes from parasitic wiring/busbar inductance. HV differential probes are essential here to stay within the switch's voltage rating while tuning.
+
+This design uses a flyback diode across the coil, producing a sharp current rise but a slow fall (as flyback energy dissipates through coil/wire resistance and the diode). It worked well and was relatively simple compared to the two-switch flyback design, but since flyback energy isn't recycled, it's ultimately limited by the 120V/15A charging circuit.
+
+### Design #3 — Two-Switch Flyback IGBT Pulse Generator
+<p align="center"><img src="./Design 3 IGBT_Two_Switch_Flyback/Two-Switch_Flyback_TMS_Construction.jpg" alt="Construction of Two-Switch Flyback" width="200"/></p>
+<p align="center"><em>Two-Switch flyback topology being built. You can see the diodes hanging off to the sides. And gate drives are now on the left, bolted to IGBT modules behind bus-bars.</em></p>
+
+This design recycles more pulse energy than the single-IGBT version and produces both a sharp rising *and* falling current edge, increasing di/dt for a stronger but shorter magnetic field pulse. It noticeably reduced charging-circuit current draw and appears more effective at stimulating muscle/nerve tissue than the single-switch design, even at higher peak current — likely because faster field transitions induce greater current in tissue.
++ For this design it's important to thermally bond both IGBT/switch modules so that they're the same temperature and have the same switching characteristics. For this I bolt them each to opposite sides of an aluminum plate which I attach water-cooling blocks to.
+I've been realizing the importance of keeping switching loops tight, and have shortened cabling from capacitor to IGBTs, and shortening cables from IGBTs to diodes.
+
+### Design #4 — H-Bridge IGBT Pulse Generator (Not Yet Built)
+Should double coil pulse current relative to the two-switch flyback topology by enabling current reversal. The complexity of positioning four large IGBT switches and the associated snubbers and diodes close to eachother, with cooling is going to be difficult without adding parasitic inductance that would offset the gains.
+
+---
+
+## Charge-Control Circuit (In Progress)
+
+I'm developing an improved, safety-critical charge-control circuit (KiCad schematics included in this repo) to replace an earlier Arduino/ADC-based version that couldn't sample the divided capacitor voltage reliably enough.
+
+The new approach uses a DAC to output a reference voltage into a comparator, which compares it against the voltage-divided capacitor voltage. This removes the need for the microcontroller (Arduino/Teensy) to sample quickly or on a consistent schedule. A weak pull-down on the DAC output ensures that if the microcontroller glitches or crashes, the DAC voltage falls to zero and the charge circuit fails safely.
+
+**Status:** The circuit has been built and the comparator triggers as expected, but the voltage-divider signal is picking up significant noise — unsurprising, given the system is essentially a small EMP generator. I've tried shielded cabling and filtering to clean up the signal, without much success. 
+
+I've also tried doing the digital route; having the teensy read an H.V. isolated ADC (ADC going through SPI isolator). 
++ Pros; I can perform digital filtering (take multiple samples and average them to get rid of the peaks.)
++ Cons; this works intermittently, but I'm seeing issues where the voltage read by the ADC jumps to 1/2 of what the actual voltage is. This is not good. I'm trying find the issue and come up with a robust way to solve this (looking into different SPI modes to trigger on rising vs falling edge to fix propogation delay from isolators).
+
+If I can't solve these ADC glitches in a very robust way I might go back to the original DAC + comparator method, and just accept that the comparator will flutter with the switching noise.
+
+---
 
 ## Useful Resources
-+ Coil placement and the 10-20 system/beam protocol; 
-https://youtu.be/CKCvAkgdJuY?si=f4i1zZF6m_ImrpPf
+- [Coil placement and the 10-20 system/beam protocol (video)](https://youtu.be/CKCvAkgdJuY?si=f4i1zZF6m_ImrpPf)
 
-
-### Update: I'm building a charge-control circuit!!!
-Starting the the same design seen in the Kicad schematics; the charge control circuit is a safety critical circuit which controls charging the main pulse capacitors. This circuit is an improved version of past control circuits using arduino and an ADC which wasn't able to sample (divided) capacitor voltage consistently. To be more fail-safe than the last version, this version uses a DAC outputting an analog voltage to a comparator which compares the DAC output voltage to the (voltage-divided) capacitor voltage. This way the arduino/teensy microcontroller doesn't need to sample quickly or at consistent times, and if the microcontroller glitches or dies, I'm going to have a weak pull-down on the DAC to be sure the DAC voltage falls to 0 making the charge circuit fail safely.
-
-This circuit has been tested though my voltage-divider is picking up quite a bit of noise.... which is everywhere since this is basically a small EMP generator. So I'll try some shielded cable and filtering to reduce this noise while maintaining good measurements. I've confirmed it triggers the comparator output as expected but have not connected the comparator's output to drive a switch to disconnect the charging supply.
-
-I'm also trying some ADCs since I'd like the main controller (a teensy 4.1) to be able to know the capacitor's voltage without having to worry about having the teensy doing anything super safety critical. 
-
-### TODO:
-
-1. Build a charge-control circuit. I don't trust a uC to do this job. Going to use a comparator, compare to a DAC output from uC, so if uC hangs DAC falls to 0 and turns off charge circuit.
-2. Build phase-control recitifier to replace HV charge circuit rectifier, this will also get rid of variac and be tied into charge system. Might need some fancy PID... thingy to control phase/firing angle to let more/less current through to charge caps. Or say fuck it and just bang-bang control it.
-3. Process feedback signal from Gate-Drivers (fiber-optic RX) to tell if we're missing pulses. What would we do if we miss pulses? I dunno yet..... shut off another redundant switch to shut off charge circuit? Also maybe "crowbar" the capacitor-bank? 
+## TODO
+1. **Finish the charge-control circuit.** Comparator-based design comparing a DAC reference to capacitor voltage, so a hung/glitched microcontroller causes the DAC to fall to 0 and shut off charging.
+2. **Build a phase-control rectifier** to replace the HV charge circuit's current rectifier and eliminate the variac, integrating it into the charge system. May need PID-style control of phase/firing angle — or a simpler bang-bang control scheme.
+3. **Process gate-driver fault feedback** (via fiber-optic RX) to detect missed pulses. Response strategy TBD — possibly tripping a redundant switch to cut the charge circuit, and/or crowbarring the capacitor bank.

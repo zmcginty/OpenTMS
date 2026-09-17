@@ -4,4 +4,4 @@
 #--save-csv test-run
 
 #python serial_plot_pyqtgraph.py --single --max-abs-volts 1 --max-jump 0.01 --debug
-python serial_plot_pyqtgraph.py /dev/cu.usbmodem176191001 --single --min-yspan 0.001 --debug --save-csv test-run2
+python serial_plot_pyqtgraph.py /dev/cu.usbmodem176191001 --single --min-yspan 0.001 --debug --window 200 --save-csv test-run2
