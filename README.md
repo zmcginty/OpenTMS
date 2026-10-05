@@ -123,25 +123,28 @@ This design uses a flyback diode across the coil, producing a sharp current rise
 This design recycles more pulse energy than the single-IGBT version and produces both a sharp rising *and* falling current edge, increasing di/dt for a stronger but shorter magnetic field pulse. It noticeably reduced charging-circuit current draw and appears more effective at stimulating muscle/nerve tissue than the single-switch design, even at higher peak current — likely because faster field transitions induce greater current in tissue.
 + For this design it's important to thermally bond both IGBT/switch modules so that they're the same temperature and have the same switching characteristics. For this I bolt them each to opposite sides of an aluminum plate which I attach water-cooling blocks to.
 I've been realizing the importance of keeping switching loops tight, and have shortened cabling from capacitor to IGBTs, and shortening cables from IGBTs to diodes.
+<p align="center"><img src="Charge_Control_And_Pulse-Driver_Upgrade_Photos/03_System_Partial_Photo_01.jpg" alt="System Photo" width="200"/></p>
+<p align="center"><em>Photo of the system, from left-to-right; charge-control board, multimeter, main pulse-IGBTs (with many red snubber caps), charge-control IGBT (with single red snubber in front), charge-circuit-rectifier, and main pulse capacitor bank in back </em></p>
 
 ### Design #4 — H-Bridge IGBT Pulse Generator (Not Yet Built)
 Should double coil pulse current relative to the two-switch flyback topology by enabling current reversal. The complexity of positioning four large IGBT switches and the associated snubbers and diodes close to eachother, with cooling is going to be difficult without adding parasitic inductance that would offset the gains.
 
 ---
 
-## Charge-Control Circuit (In Progress)
+## Charge-Control Circuit
+<p align="center"><img src="Charge_Control_And_Pulse-Driver_Upgrade_Photos/08_Charge_Controller_Board_01.jpg" alt="Newly-Built Charge-Controller Board" width="200"/></p>
+<p align="center"><em>Newly Built Charge-Control Board with (from bottom to top) Teensy 4.0, ADS8699 high-speed ADC, AD5693 DAC, LM393P Comparator, ADS1115 4ch slow ADC, 5V LDO, and 3.3V buck-converter</em></p>
 
-I'm developing an improved, safety-critical charge-control circuit (KiCad schematics included in this repo) to replace an earlier Arduino/ADC-based version that couldn't sample the divided capacitor voltage reliably enough.
+The new charge-control system seems to be working well enough for calling it version 1!!! After many failed attempts to measure a voltage divider, and my ground plane shifting and making either the teensy and/or ADC shit itself, even after adding digital SPI isolators, I realized.... that's what HV diff probes are for! So ripped out some HV SPI/I2C isolators and I'm now just measuring the output of a Micsig 1300v diff probe. No glithes, no isolators causing signal delays, no fried chips and salsa. Perfect.
 
-The new approach uses a DAC to output a reference voltage into a comparator, which compares it against the voltage-divided capacitor voltage. This removes the need for the microcontroller (Arduino/Teensy) to sample quickly or on a consistent schedule. A weak pull-down on the DAC output ensures that if the microcontroller glitches or crashes, the DAC voltage falls to zero and the charge circuit fails safely.
+The new approach uses a DAC to output a reference voltage into a comparator, which compares it against the output of the Micsig 1300v differential probe. I have probe scale-factors in the teensy code as well as linear calibrations for both ADCs and DAC as well. I have the fast ADC on here as well incase I want to control the charge-circuit via the teensy reading ADC instead of from the comparator + DAC, but for now the comparator + DAC method is working great, so we have some extra/redundant ADCs. A weak pull-down on the DAC output ensures that if the microcontroller glitches or crashes, the DAC voltage falls to zero and the charge circuit fails safely.
 
-**Status:** The circuit has been built and the comparator triggers as expected, but the voltage-divider signal is picking up significant noise — unsurprising, given the system is essentially a small EMP generator. I've tried shielded cabling and filtering to clean up the signal, without much success. 
 
-I've also tried doing the digital route; having the teensy read an H.V. isolated ADC (ADC going through SPI isolator). 
-+ Pros; I can perform digital filtering (take multiple samples and average them to get rid of the peaks.)
-+ Cons; this works intermittently, but I'm seeing issues where the voltage read by the ADC jumps to 1/2 of what the actual voltage is. This is not good. I'm trying find the issue and come up with a robust way to solve this (looking into different SPI modes to trigger on rising vs falling edge to fix propogation delay from isolators).
+## Upgrades to Pulse-Driver system
+<p align="center"><img src="Charge_Control_And_Pulse-Driver_Upgrade_Photos/09_Pulse_Driver_Board_01.jpg" alt="Upgraded Pulse-Driver Board" width="200"/></p>
+<p align="center"><em>Pulse Driver Board with added inputs for RX signals from fiber-optic interface board, level-shifter and fault LED</em></p>
 
-If I can't solve these ADC glitches in a very robust way I might go back to the original DAC + comparator method, and just accept that the comparator will flutter with the switching noise.
+I've made some additions to the pulse-driver control circuit as well; for a while I was just sending pulses from the teensy to the fiber-optic transmitters to fire the IGBT switches, and not reading the signal received from the other fiber line which acknowledges the driver received each pulse, and can indicate faults like a short-circuit. I wired up the fiber RX lines, ran them through a level shifter to 3.3v for the teensy to read and the teensy is now checking that each pulse was ack'd by each gate-driver, and can turn on the big-red fault LED if something's wrong. NOTE: Big-Red Fault LED will blink if the teensy detects a warning; like a an ack pulse was slightly off, or short/long. The LED will latch on if it detects a fault such as a short-circuit. It also prints this data + occasional status out over serial. The teensy code has the ability to control a safety relay to shut off main power to the system if a fault is detected, but I don't have that safety mechanical relay wired in yet, so for now, it just keeps going.
 
 ---
 
@@ -149,6 +152,7 @@ If I can't solve these ADC glitches in a very robust way I might go back to the 
 - [Coil placement and the 10-20 system/beam protocol (video)](https://youtu.be/CKCvAkgdJuY?si=f4i1zZF6m_ImrpPf)
 
 ## TODO
-1. **Finish the charge-control circuit.** Comparator-based design comparing a DAC reference to capacitor voltage, so a hung/glitched microcontroller causes the DAC to fall to 0 and shut off charging.
-2. **Build a phase-control rectifier** to replace the HV charge circuit's current rectifier and eliminate the variac, integrating it into the charge system. May need PID-style control of phase/firing angle — or a simpler bang-bang control scheme.
-3. **Process gate-driver fault feedback** (via fiber-optic RX) to detect missed pulses. Response strategy TBD — possibly tripping a redundant switch to cut the charge circuit, and/or crowbarring the capacitor bank.
+1. **UPDATE THE SCHEMATICS**
+2. **Refine charge-control switch** The charge controller is working well now. But I'm using a rediculously big IGBT to switch just a few tens of amps. Need to find a smaller IGBT/switch which can withstand ~2-3kV.
+3. **Build a phase-control rectifier** to replace the HV charge circuit's current rectifier and eliminate the variac, integrating it into the charge system. May need PID-style control of phase/firing angle — or a simpler bang-bang control scheme.
+4. **Process gate-driver fault feedback** (via fiber-optic RX) to detect missed pulses. Response strategy TBD — possibly tripping a redundant switch to cut the charge circuit, and/or crowbarring the capacitor bank.
