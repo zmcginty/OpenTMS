@@ -24,7 +24,7 @@ An open-source transcranial magnetic stimulator (TMS) project, including coil de
 
 I primarily build two coil geometries — single coils and figure-8 coils. What I've focused on are air-core windings in either single-layer or multi-layer form. The general architecture is adapted from research papers and the limited information published by commercial TMS coil manufacturers. The figure-8 CloudTMS coil (below) was a major influence on my designs in terms of hollow copper conductor carrying coolant.
 
-<p align="center"><img src="./Example_Images/CloudTMS_Coil.png" alt="CloudTMS coil" width="200"/></p>
+<p align="center"><img src="Example Images/CloudTMS_Coil_Slice.png" alt="CloudTMS coil" width="200"/></p>
 
 As I moved to higher pulse rates and energies, active cooling became necessary. My preferred approach, similar to the CloudTMS design, uses hollow copper tubing (sold for HVAC/refrigeration) insulated with PTFE heat-shrink. PTFE works well because it's a good dielectric, stays thin-walled after shrinking, tolerates high temperatures, and holds the coil shape better than thicker heat-shrink alternatives — though it does require fairly high heat to shrink fully.
 
@@ -36,14 +36,14 @@ As I moved to higher pulse rates and energies, active cooling became necessary. 
 - Hold the coil together with tape ahead of potting.
 
 <p align="center">
-  <img src="./TMS_Coils/figure_8_multilayer_coil_naked_4.jpg" alt="Coil before potting" width="200"/>
-  <img src="./TMS_Coils/figure_8_multilayer_coil_naked_2.jpg" alt="Coil before potting" width="200"/>
+  <img src="./TMS Coils/figure_8_multilayer_coil_naked_4.jpg" alt="Coil before potting" width="200"/>
+  <img src="./TMS Coils/figure_8_multilayer_coil_naked_2.jpg" alt="Coil before potting" width="200"/>
 </p>
 <p align="center"><em>Example coil before potting</em></p>
 
 Potting the coil in epoxy significantly improves mechanical stability and reduces noise by keeping the windings from moving against each other under pulse forces. Hot glue works as an alternative but produces coils that are noticeably louder in operation — not confidence-inspiring at higher power levels.
 
-<p align="center"><img src="./TMS_Coils/figure_8_multilayer_coil_potted_4.jpg" alt="Coil after potting" width="200"/></p>
+<p align="center"><img src="./TMS Coils/figure_8_multilayer_coil_potted_4.jpg" alt="Coil after potting" width="200"/></p>
 <p align="center"><em>Example coil after potting</em></p>
 
 ## Coil Cooling
@@ -103,13 +103,13 @@ Earlier designs used a single MOT with low-pressure mineral-oil cooling, which w
 ## Pulse-Generator Designs
 
 ### Design #1 — SCR-Based Pulse Generator
-<p align="center"><img src="./Design 1 SCR-Type_Pulse-Generator/SCR-Type_TMS_1.jpg" alt="SCR switch bottom-right" width="200"/></p>
+<p align="center"><img src="./Design 1 SCR-Type Pulse-Generator/SCR-Type_TMS_1.jpg" alt="SCR switch bottom-right" width="200"/></p>
 <p align="center"><em>SCR-switch pulse generator (SCRs are bottom-right. Main capacitor front left. Rectifier behind capacitor. and mineral-oil cooled microwave transformer behid rectifier. </em></p>
 
 The first design I built. It handles very high energy levels well at consistent frequencies/patterns (e.g., the standard 5Hz/10Hz protocols used in early depression-treatment research). Its limitation is pattern flexibility: an SCR/thyristor is a latching switchable diode, so once triggered it fully discharges the capacitor. This steady current decay is gentle on flyback effects but rules out more complex patterns like Theta-Burst (50Hz bursts repeating at 4–5Hz).
 
 ### Design #2 — Single-IGBT Pulse Generator
-<p align="center"><img src="./Design 2 Single IGBT-Type_Pulse-Generator/Gate-Drive_to_IGBTs.jpg" alt="Single-IGBT (Two IGBTs in parallel)" width="200"/></p>
+<p align="center"><img src="./Design 2 Single IGBT-Type Pulse-Generator/Gate-Drive_to_IGBTs.jpg" alt="Single-IGBT (Two IGBTs in parallel)" width="200"/></p>
 <p align="center"><em>Single IGBT topology (note; two IGBTs in parallel), you can also see gate driver I used before using ones built specifically for the IGBT module</em></p>
 
 Since IGBTs aren't latching, they can be switched on and back off within a short pulse, allowing partial capacitor discharge and enabling patterns like Theta-Burst. The tradeoff is significant flyback voltage when interrupting current through the coil — this destroyed several IGBTs before I addressed it with a robust flyback diode across the coil and snubber capacitors across the IGBT(s) to absorb spikes from parasitic wiring/busbar inductance. HV differential probes are essential here to stay within the switch's voltage rating while tuning.
@@ -117,13 +117,13 @@ Since IGBTs aren't latching, they can be switched on and back off within a short
 This design uses a flyback diode across the coil, producing a sharp current rise but a slow fall (as flyback energy dissipates through coil/wire resistance and the diode). It worked well and was relatively simple compared to the two-switch flyback design, but since flyback energy isn't recycled, it's ultimately limited by the 120V/15A charging circuit.
 
 ### Design #3 — Two-Switch Flyback IGBT Pulse Generator
-<p align="center"><img src="./Design 3 IGBT_Two_Switch_Flyback/Two-Switch_Flyback_TMS_Construction.jpg" alt="Construction of Two-Switch Flyback" width="200"/></p>
+<p align="center"><img src="./Design 3 IGBT Two-Switch-Flyback/Two-Switch_Flyback_TMS_Construction.jpg" alt="Construction of Two-Switch Flyback" width="200"/></p>
 <p align="center"><em>Two-Switch flyback topology being built. You can see the diodes hanging off to the sides. And gate drives are now on the left, bolted to IGBT modules behind bus-bars.</em></p>
 
 This design recycles more pulse energy than the single-IGBT version and produces both a sharp rising *and* falling current edge, increasing di/dt for a stronger but shorter magnetic field pulse. It noticeably reduced charging-circuit current draw and appears more effective at stimulating muscle/nerve tissue than the single-switch design, even at higher peak current — likely because faster field transitions induce greater current in tissue.
 + For this design it's important to thermally bond both IGBT/switch modules so that they're the same temperature and have the same switching characteristics. For this I bolt them each to opposite sides of an aluminum plate which I attach water-cooling blocks to.
 I've been realizing the importance of keeping switching loops tight, and have shortened cabling from capacitor to IGBTs, and shortening cables from IGBTs to diodes.
-<p align="center"><img src="Charge_Control_And_Pulse-Driver_Upgrade_Photos/03_System_Partial_Photo_01.jpg" alt="System Photo" width="200"/></p>
+<p align="center"><img src="Charge-Control And Pulse-Driver Upgrade Photos/03_System_Partial_Photo_01.jpg" alt="System Photo" width="200"/></p>
 <p align="center"><em>Photo of the system, from left-to-right; charge-control board, multimeter, main pulse-IGBTs (with many red snubber caps), charge-control IGBT (with single red snubber in front), charge-circuit-rectifier, and main pulse capacitor bank in back </em></p>
 
 ### Design #4 — H-Bridge IGBT Pulse Generator (Not Yet Built)
@@ -132,7 +132,7 @@ Should double coil pulse current relative to the two-switch flyback topology by 
 ---
 
 ## Charge-Control Circuit
-<p align="center"><img src="Charge_Control_And_Pulse-Driver_Upgrade_Photos/08_Charge_Controller_Board_01.jpg" alt="Newly-Built Charge-Controller Board" width="200"/></p>
+<p align="center"><img src="Charge-Control And Pulse-Driver Upgrade Photos/08_Charge_Controller_Board_01.jpg" alt="Newly-Built Charge-Controller Board" width="200"/></p>
 <p align="center"><em>Newly Built Charge-Control Board with (from bottom to top) Teensy 4.0, ADS8699 high-speed ADC, AD5693 DAC, LM393P Comparator, ADS1115 4ch slow ADC, 5V LDO, and 3.3V buck-converter</em></p>
 
 The new charge-control system seems to be working well enough for calling it version 1!!! After many failed attempts to measure a voltage divider, and my ground plane shifting and making either the teensy and/or ADC shit itself, even after adding digital SPI isolators, I realized.... that's what HV diff probes are for! So ripped out some HV SPI/I2C isolators and I'm now just measuring the output of a Micsig 1300v diff probe. No glithes, no isolators causing signal delays, no fried chips and salsa. Perfect.
@@ -141,7 +141,7 @@ The new approach uses a DAC to output a reference voltage into a comparator, whi
 
 
 ## Upgrades to Pulse-Driver system
-<p align="center"><img src="Charge_Control_And_Pulse-Driver_Upgrade_Photos/09_Pulse_Driver_Board_01.jpg" alt="Upgraded Pulse-Driver Board" width="200"/></p>
+<p align="center"><img src="Charge-Control And Pulse-Driver Upgrade Photos/09_Pulse_Driver_Board_01.jpg" alt="Upgraded Pulse-Driver Board" width="200"/></p>
 <p align="center"><em>Pulse Driver Board with added inputs for RX signals from fiber-optic interface board, level-shifter and fault LED</em></p>
 
 I've made some additions to the pulse-driver control circuit as well; for a while I was just sending pulses from the teensy to the fiber-optic transmitters to fire the IGBT switches, and not reading the signal received from the other fiber line which acknowledges the driver received each pulse, and can indicate faults like a short-circuit. I wired up the fiber RX lines, ran them through a level shifter to 3.3v for the teensy to read and the teensy is now checking that each pulse was ack'd by each gate-driver, and can turn on the big-red fault LED if something's wrong. NOTE: Big-Red Fault LED will blink if the teensy detects a warning; like a an ack pulse was slightly off, or short/long. The LED will latch on if it detects a fault such as a short-circuit. It also prints this data + occasional status out over serial. The teensy code has the ability to control a safety relay to shut off main power to the system if a fault is detected, but I don't have that safety mechanical relay wired in yet, so for now, it just keeps going.
