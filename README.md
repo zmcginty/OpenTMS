@@ -152,6 +152,12 @@ I've made some additions to the pulse-driver control circuit as well; for a whil
 
 ---
 
+## Safety Resources
+- [TMS Safety with respect to seizures](https://pmc.ncbi.nlm.nih.gov/articles/PMC7732158/pdf/ndt-16-2989.pdf)
+- [General article discussion factors which can decrease seizure-threshold (make it more likely you'll have a seizure)](https://www.wmchealth.org/living-well/7-everyday-factors-that-can-increase-seizure-risk)
+- [Concise overview from clinic of seizure risk factors](https://www.midcitytms.com/transcranial-magnetic-stimulation-safety-with-respect-to-seizure-ndt/)
+
+
 ## Useful Resources
 
 - [Online calculator used for Beam-Protocol/10-20 system to calculate position of DLPFC](https://clinicalresearcher.org/F3/calculate.php)
