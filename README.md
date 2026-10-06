@@ -14,7 +14,7 @@ An open-source transcranial magnetic stimulator (TMS) project, including coil de
 - [Measurement System](#measurement-system)
 - [Charging Circuit](#charging-circuit)
 - [Pulse-Generator Designs](#pulse-generator-designs)
-- [Charge-Control Circuit (In Progress)](#charge-control-circuit-in-progress)
+- [Charge-Control Circuit](#charge-control-circuit)
 - [Useful Resources](#useful-resources)
 - [TODO](#todo)
 
@@ -139,6 +139,10 @@ The new charge-control system seems to be working well enough for calling it ver
 
 The new approach uses a DAC to output a reference voltage into a comparator, which compares it against the output of the Micsig 1300v differential probe. I have probe scale-factors in the teensy code as well as linear calibrations for both ADCs and DAC as well. I have the fast ADC on here as well incase I want to control the charge-circuit via the teensy reading ADC instead of from the comparator + DAC, but for now the comparator + DAC method is working great, so we have some extra/redundant ADCs. A weak pull-down on the DAC output ensures that if the microcontroller glitches or crashes, the DAC voltage falls to zero and the charge circuit fails safely.
 
+<p align="center"><img src="Teensy Charge Control Telemetry Viewer/Interface_Screen_Shots/TMS_Charge_Control_Telem_With_Setpoint_Control.png" alt="Python Telemetry Graph/Display" width="300"/></p>
+<p align="center"><em>Screenshot of a python script which displays a realtime graph and telemetry from the serial output of the teensy charge-control. Also added the ability to adjust the charge-setpoint in the python window. You can see the pulse trains as the capacitor discharges, and the charge controller working as it limits the capacitor voltage at the setpoint of (close to) 100V!</em></p>
+
+Above is a screenshot of a python script which listens to voltage values sent over serial from the teensy charge controller and will display a live graph of the capacitor voltage, which is really useful for debugging as it's basically an autoscaling slow oscilliscope. The graph only shows the fast ADC's (ADS8699) calibrated capacitor voltage. It also displays other, slow-speed telemetry as numbers such as the slow ADC's calibrated capacitor voltage, slow ADC's measurement of DAC's output in both raw voltage, and the scaled/calibrated set-voltage it corresponds to (ie. I set the DAC to output a voltage which corresponds to 200V from the Micsig, I can verify that the ADC's measurement reads close enough, like 199.2V) I also added control to adjust the voltage setpoint from this python window which is useful for testing system starting from low voltage to be safe. I think there may be something with the comparator which is causing the cutoff to be slightly below the setpoint; in the screenshot you can see it cutting at ~95V instead of 100V. More calibrations....
 
 ## Upgrades to Pulse-Driver system
 <p align="center"><img src="Charge-Control And Pulse-Driver Upgrade Photos/09_Pulse_Driver_Board_01.jpg" alt="Upgraded Pulse-Driver Board" width="200"/></p>
@@ -149,10 +153,26 @@ I've made some additions to the pulse-driver control circuit as well; for a whil
 ---
 
 ## Useful Resources
-- [Coil placement and the 10-20 system/beam protocol (video)](https://youtu.be/CKCvAkgdJuY?si=f4i1zZF6m_ImrpPf)
+
+- [Online calculator used for Beam-Protocol/10-20 system to calculate position of DLPFC](https://clinicalresearcher.org/F3/calculate.php)
+- [Same online calculator, where you enter your measurements](https://clinicalresearcher.org/F3/)
+- [Clinical Researcher Software Tools (where I got the two links above) Contains other tools that could be useful for motor-threshold stuff](https://clinicalresearcher.org/software.htm)
+
+## Useful Videos
+- [Coil placement and the 10-20 system/beam protocol (video)](https://youtu.be/CKCvAkgdJuY?si=6TRw3_EgRK5eAh5G)
+- [Same video as above with added instructions to enter measurements into clinicalresearcher calculator (link above)](https://youtu.be/akp4V5PFb6A?si=kvKB5cpgHWPCvdm8)
+- [Good introductory explanation of general TMS](https://www.youtube.com/watch?v=NQHVfF_5rtc)
+- [Funny video of the TMS researcher interrupting his speach with TMS](https://www.youtube.com/watch?v=85QKdt8boMA)
+- [Researcher showing TMS stimulating muscles directly and muscles through the motor-cortex](https://www.youtube.com/watch?v=JA0q4fVqrFQ)
+- [Good Long-Form explanation of someone who runs a TMS clinic showing how they get a patient setup, and perform treatment](https://www.youtube.com/watch?v=WxCunEG2oi0)
+
+
+
 
 ## TODO
 1. **UPDATE THE SCHEMATICS**
 2. **Refine charge-control switch** The charge controller is working well now. But I'm using a rediculously big IGBT to switch just a few tens of amps. Need to find a smaller IGBT/switch which can withstand ~2-3kV.
 3. **Build a phase-control rectifier** to replace the HV charge circuit's current rectifier and eliminate the variac, integrating it into the charge system. May need PID-style control of phase/firing angle — or a simpler bang-bang control scheme.
-4. **Process gate-driver fault feedback** (via fiber-optic RX) to detect missed pulses. Response strategy TBD — possibly tripping a redundant switch to cut the charge circuit, and/or crowbarring the capacitor bank.
+4. **Process gate-driver fault feedback** Reading status/feedback from gate-drivers is working now and has latching/blinking LEDs/indicators to indicate warnings and faults. There is functionality to turn off a safety relay, disconnecting power from a subsystem or whole system which I'll get wired up later.
+5. **Add functionality to Pulse-Driver** To run different patterns/protocols, maybe add input (with damn good shielding) so user can press a button to fire a single pulse.
+6. **Finally build a tool to map the magnetic field strength & shape of a coil.** My idea is basically put a precise analog hall-effect sensor on some 3d gantry machine like a 3d printer, and have it scan over many 3d points around the coil and create a 3d heat-map of magnetic field strength. Anyone know how to use 3d-printers? and know how to make them scan some end-effector to create a map like this???? I'd love some help!

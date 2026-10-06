@@ -8,12 +8,25 @@
     1. Directly control connecting/disconnecting the capacitor's charge circuit by reading the capacitor's voltage, and turning off charge-circuit when it gets above a set threshold
     2. Or by outputting an analog signal via the AD5693 DAC which a comparator compares to the capacitor's voltage. I beleive the comparator is more robust and fail-safe.
 
+  CHARGE SETPOINT (settable over Serial):
+    One setpoint, in capacitor volts, drives both methods: the DAC/comparator
+    threshold and the direct ADC control. It starts at 0 V (charging disabled)
+    on every boot and can never exceed SETPOINT_MAX_V.
+    Commands (one per line, case-insensitive):
+      SET <volts>   set the charge setpoint, e.g. "SET 800"
+      OFF           setpoint to 0 V (charging disabled)
+      GET           report the current setpoint
+      AVG <n>       ADS8699 averaging depth (NUM_AVG)
+    Replies: "ACK SET 800.000", "ACK AVG 500", or "ERR <reason>".
+    The status line also reports the active setpoint as "set_v:<volts>".
+
   LOOP STRUCTURE (cooperative multi-rate scheduling, no threads):
     - FAST path, every loop():  ADS8699 averaged read -> direct charge control.
     - SLOW paths, non-blocking, each on its own timer:
         dac_service()     -- writes the AD5693 only when the target code changes.
         ads1115_service() -- state machine: starts a conversion, comes back
                              later to collect it. Never waits on the ADC.
+        command_service() -- reads serial commands, never blocks.
         print_service()   -- rate-limited Serial output.
     Each slow task does at most ONE short I2C transaction per loop() pass,
     so the fast path is never stalled for more than ~100-200 us by I2C.
@@ -47,8 +60,17 @@ SPISettings adsSPISettings(SPI_CLOCK_HZ, MSBFIRST, SPI_MODE0);
 const uint16_t T_CONV_US = 7;   // >= 5 us conversion time + margin
 const uint16_t RVS_TIMEOUT_US = 50; // generous safety net; real tconv is ~5us
 
-// Throwing some extra constants here....
-float CAPACITOR_VOLT_SETPOINT = 100.000;
+// ---------- Charge setpoint ----------
+// Hard ceiling for SET commands. Set this to what your capacitor bank,
+// IGBTs and probe (1300 V max) can safely take; anything above it is refused.
+const float SETPOINT_MAX_V = 1000.0f;
+// Setpoints below this count as "charging disabled": DAC at 0 V and the
+// direct-control output held LOW.
+const float SETPOINT_MIN_ACTIVE_V = 1.0f;
+// The active setpoint in capacitor volts. Always starts at 0 V on boot.
+// Change it with the SET command, not by editing this line.
+float chargeSetpointV = 0.0f;
+
 // If a value is below -10v, ignore it and wait for the next one...
 const float MIN_VOLTAGE_THRESHOLD = -10;
 
@@ -72,9 +94,6 @@ uint16_t PRINT_HZ = 10;                  // Serial output rate
 const uint32_t DAC_RETRY_MS = 100;       // retry interval if a DAC write fails
 
 // ---------- ADS1115 channel map ----------
-// ASSUMPTION: AIN0 = DAC output (for verification), AIN1 = HV diff probe
-// output. AIN2 is read and printed too since your last version printed it.
-// Change these to match your actual wiring.
 const uint8_t ADS1115_CHANNELS[] = {1, 3};
 const uint8_t ADS1115_NUM_CH = sizeof(ADS1115_CHANNELS);
 const uint8_t ADS1115_CH_DAC   = 1;
@@ -83,9 +102,9 @@ const uint8_t ADS1115_CH_PROBE = 3;
 // ---------- DAC configuration ----------
 float vref = 2.5000;
 uint8_t gain = 2;   // gain of 2 means our span is 0-5V
-// Target DAC output voltage (what the comparator sees). Change this at any
-// time; dac_service() only writes to the chip when the resulting code changes.
-// To set it from a capacitor voltage instead:
+// Target DAC output voltage (what the comparator sees). Set from the charge
+// setpoint by applySetpoint(); dac_service() only writes to the chip when
+// the resulting code changes.
 float dacTargetVolts = 0.00f;
 const float DAC_VERIFY_TOL_V = 0.010f;   // ADS1115 readback must be within this of the commanded voltage
 
@@ -141,6 +160,8 @@ bool dacSkipNextVerify = true;   // skip the averaging window that straddles a D
 bool dacVerifyOk = false;
 float dacVerifyErrorV = 0.0f;
 
+bool chargePinOn = false;        // last level written to PIN_CHRG_CTRL (for the status line)
+
 ///////////////////////////////////////////////////////////////////////////////
 // AD5693 DAC FUNCTIONS
 uint16_t voltageToDacCode(float voltage, float vref, uint8_t gain) {
@@ -194,6 +215,88 @@ void dac_verify() {
   float expected = codeToVoltage((uint16_t)lastDacCodeWritten, vref, gain);
   dacVerifyErrorV = ads1115_volts[ADS1115_CH_DAC] - expected;
   dacVerifyOk = fabsf(dacVerifyErrorV) <= DAC_VERIFY_TOL_V;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// CHARGE SETPOINT
+
+bool chargeEnabled() {
+  return chargeSetpointV >= SETPOINT_MIN_ACTIVE_V;
+}
+
+// The only place the setpoint changes. Updates the DAC target too, so the
+// comparator and the direct control always use the same value.
+void applySetpoint(float capVolts) {
+  if (!(capVolts >= 0.0f)) capVolts = 0.0f;            // also catches NaN
+  if (capVolts > SETPOINT_MAX_V) capVolts = SETPOINT_MAX_V;
+  chargeSetpointV = capVolts;
+  dacTargetVolts = chargeEnabled() ? capVoltToDacVolts(chargeSetpointV) : 0.0f;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// SERIAL COMMANDS (non-blocking)
+
+void handleCommand(char *line) {
+  char *cmd = strtok(line, " \t");
+  if (cmd == nullptr) return;
+  for (char *p = cmd; *p; ++p) *p = (char)toupper((unsigned char)*p);
+  char *arg = strtok(nullptr, " \t");
+
+  if (strcmp(cmd, "SET") == 0) {
+    if (arg == nullptr) { Serial.println("ERR SET needs a value, e.g. SET 800"); return; }
+    char *end = nullptr;
+    float v = strtof(arg, &end);
+    if (end == arg || *end != '\0' || !isfinite(v)) {
+      Serial.printf("ERR SET '%s' is not a number\r\n", arg);
+      return;
+    }
+    if (v < 0.0f || v > SETPOINT_MAX_V) {
+      Serial.printf("ERR SET %.1f out of range 0-%.1f\r\n", v, SETPOINT_MAX_V);
+      return;
+    }
+    applySetpoint(v);
+    Serial.printf("ACK SET %.3f\r\n", chargeSetpointV);
+  } else if (strcmp(cmd, "OFF") == 0) {
+    applySetpoint(0.0f);
+    Serial.printf("ACK SET %.3f\r\n", chargeSetpointV);
+  } else if (strcmp(cmd, "GET") == 0) {
+    Serial.printf("ACK SET %.3f\r\n", chargeSetpointV);
+  } else if (strcmp(cmd, "AVG") == 0) {
+    long n = (arg != nullptr) ? strtol(arg, nullptr, 10) : 0;
+    if (n < NUM_AVG_MIN || n > NUM_AVG_MAX) {
+      Serial.printf("ERR AVG must be %u-%u\r\n", NUM_AVG_MIN, NUM_AVG_MAX);
+      return;
+    }
+    NUM_AVG = (uint16_t)n;
+    Serial.printf("ACK AVG %u\r\n", NUM_AVG);
+  } else {
+    Serial.printf("ERR unknown command '%s' (use SET <V>, OFF, GET, AVG <n>)\r\n", cmd);
+  }
+}
+
+// Collects characters into a line; runs the command on newline.
+void command_service() {
+  static char buf[48];
+  static uint8_t len = 0;
+  static bool overflow = false;
+
+  while (Serial.available() > 0) {
+    char c = (char)Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (overflow) {
+        Serial.println("ERR command too long");
+      } else if (len > 0) {
+        buf[len] = '\0';
+        handleCommand(buf);
+      }
+      len = 0;
+      overflow = false;
+    } else if (len < sizeof(buf) - 1) {
+      buf[len++] = c;
+    } else {
+      overflow = true;
+    }
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -286,10 +389,7 @@ RangeInfo getRangeInfo(ADS8699_Range r) {
 // Defaults to the chip's power-on default range.
 ADS8699_Range currentRange = RANGE_PM_3VREF;
 // True only once RANGE_SEL_REG has actually been confirmed (via readback)
-// to match currentRange. Declared here, early, so ads8699_setRangeVerified
-// and the averaging function can both use it regardless of their own
-// position in the file -- Arduino auto-prototypes functions, not plain
-// global variables.
+// to match currentRange.
 bool rangeConfirmed = false;
 
 // ---------- Low level 32-bit SPI transfer ----------
@@ -305,11 +405,6 @@ uint32_t spiTransfer32(uint32_t txWord) {
 }
 
 // ---------- Register write (WRITE command, whole 16-bit word) ----------
-// addr = byte address of the register per Table 7-10 (e.g. 0x14 for
-// RANGE_SEL_REG). The LSB of the address is ignored by the device for
-// half-word commands, so pass the even byte address of the pair.
-// data16 = the 16-bit value to write (covers that byte and the next one).
-//
 // NOTE: because CONVST and CS share one pin, opening/closing the frame
 // to send this command ALSO triggers a conversion. We read and discard
 // that conversion afterward so the pin/state machine stays in sync.
@@ -337,16 +432,8 @@ void ads8699_writeRegister16(uint8_t addr, uint16_t data16) {
 }
 
 // ---------- Register read (READ command, whole 16-bit word) ----------
-// Mirrors the WRITE command's opcode/address framing (opcode 11001
-// instead of 11010, per TI's documented READ command format), sent as
-// its own CS-low frame, then a second CS-low NOP frame clocks the
-// register's 16-bit content back out.
-//
-// NOTE: we aren't 100% certain from the datasheet excerpts alone
-// whether the returned 16 bits land in the upper or lower half of the
-// 32-bit NOP-frame result, so this returns the raw 32-bit word as-is
-// (upper 16 bits = raw >> 16, lower 16 bits = raw & 0xFFFF); callers
-// check both halves against the value they expect.
+// Returns the raw 32-bit NOP-frame word; callers check both halves
+// against the value they expect.
 uint32_t ads8699_readRegister16(uint8_t addr) {
   uint32_t cmd = 0;
   cmd |= (0b11001UL << 27);              // READ opcode (whole 16-bit word)
@@ -358,8 +445,6 @@ uint32_t ads8699_readRegister16(uint8_t addr) {
   spiTransfer32(cmd);                    // frame F: send the read command
   SPI.endTransaction();
   digitalWrite(PIN_CS, HIGH);            // closes frame -> command executes
-                                          // (this edge also starts a conversion,
-                                          // same caveat as writeRegister16)
   delayMicroseconds(T_CONV_US);
 
   digitalWrite(PIN_CS, LOW);
@@ -415,8 +500,7 @@ bool ads8699_writeRegisterVerified(uint8_t addr, uint16_t data16, const char *re
 
 // Same as ads8699_setRange(), but reads RANGE_SEL_REG back afterward and
 // retries if it doesn't match. currentRange (and rangeConfirmed) are only
-// updated on a CONFIRMED success, so a failed verification can't leave the
-// code-to-voltage math assuming a range that was never actually set.
+// updated on a CONFIRMED success.
 bool ads8699_setRangeVerified(ADS8699_Range range, bool useExternalReference = false,
                                uint8_t maxAttempts = 5) {
   uint16_t expected = (uint16_t)range;
@@ -432,9 +516,7 @@ bool ads8699_setRangeVerified(ADS8699_Range range, bool useExternalReference = f
 // ---------- Output parity (DATAOUT_CTL_REG, address 0x10) ----------
 // Bit 3 (PAR_EN) appends two even-parity bits right after the 18-bit
 // conversion result: bit 13 = parity of the ADC output bits, bit 12 =
-// parity of the whole output frame. With no other flags enabled both
-// should equal the even parity of the 18-bit code, which catches
-// single-bit (and most multi-bit) SPI corruption.
+// parity of the whole output frame.
 const uint8_t DATAOUT_CTL_REG_ADDR = 0x10;
 const uint16_t DATAOUT_CTL_PAR_EN = (1 << 3);
 bool parityEnabled = false; // set by ads8699_enableParity() in setup()
@@ -468,17 +550,10 @@ float lastGoodVoltage = 0.0f;
 bool dataStale = false; // true when the last returned reading isn't trusted (see ads8699_readVoltageAveraged)
 
 // ---------- Stuck-SPI-bus detection & recovery ----------
-// A genuinely-converting ADC returning the EXACT SAME 32-bit word many
-// times in a row is astronomically unlikely given its own noise. Seeing
-// that (with parity still passing) points at a wedged SPI peripheral, so
-// we detect the repeat and force a real peripheral + ADC reset.
 uint32_t lastRawWord = 0xFFFFFFFFUL;
 uint16_t identicalRawCount = 0;
 const uint16_t STUCK_BUS_THRESHOLD = 15; // consecutive identical raw words -> assume wedged
 
-// Full (re)initialization: pulses RST, brings up SPI, and re-applies range
-// + parity configuration with verification, retrying the whole sequence
-// up to MAX_REINIT_ROUNDS times.
 const uint8_t MAX_REINIT_ROUNDS = 10;
 
 void ads8699_fullReinit() {
@@ -652,70 +727,10 @@ float ads8699_readVoltageAveraged(uint16_t numSamples) {
   return voltage;
 }
 
-// ---------- Runtime control of averaging depth over Serial ----------
-// Type a plain integer (e.g. "500") followed by Enter in the Serial
-// Monitor to change NUM_AVG on the fly, without recompiling.
-void checkSerialForNumAvgUpdate() {
-  static String inBuf;
-  while (Serial.available() > 0) {
-    char c = (char)Serial.read();
-    if (c == '\n' || c == '\r') {
-      if (inBuf.length() > 0) {
-        long val = inBuf.toInt();
-        if (val > 0) {
-          uint16_t newVal = (uint16_t)constrain(val, NUM_AVG_MIN, NUM_AVG_MAX);
-          NUM_AVG = newVal;
-        }
-        inBuf = "";
-      }
-    } else {
-      inBuf += c;
-    }
-  }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // RATE-LIMITED SERIAL OUTPUT
-// "label:value" pairs, readable in the Serial Monitor and plottable in the
-// Serial Plotter. loop_hz is how many fast control iterations ran per
-// second, so you can see what NUM_AVG and the slow tasks are costing you.
-// void print_service(float v_cap_fast) {
-//   static elapsedMillis sincePrint;
-//   static elapsedMillis rateWindow;
-//   static uint32_t loopCount = 0;
-//   static float loopHz = 0.0f;
-
-//   loopCount++;
-//   if (rateWindow >= 1000) {
-//     loopHz = loopCount * 1000.0f / (float)rateWindow;
-//     loopCount = 0;
-//     rateWindow = 0;
-//   }
-
-//   uint32_t printInterval = 1000UL / (PRINT_HZ ? PRINT_HZ : 1);
-//   if (sincePrint < printInterval) return;
-//   sincePrint = 0;
-
-//   // Cap voltage from the ADS1115 probe channel, through the same probe chain.
-//   float v_cap_slow = (ads1115_volts[ADS1115_CH_PROBE] * PROBE_MULTIPLIER * VDIV_CAL_SCALE) + VDIV_CAL_OFFSET;
-
-//   Serial.print("v_cap:");        Serial.print(v_cap_fast, 3);
-//   Serial.print(" v_cap_slow:");  Serial.print(v_cap_slow, 3);
-//   Serial.print(" dac_meas:");    Serial.print(ads1115_volts[ADS1115_CH_DAC], 4);
-//   //float v_div = (capVolts - VDIV_CAL_OFFSET) / VDIV_CAL_SCALE;
-//   //return v_div / (float)PROBE_MULTIPLIER;
-//   Serial.print(" read_dac_set_volt:"); Serial.print((((ads1115_volts[ADS1115_CH_DAC] * (float)PROBE_MULTIPLIER) * VDIV_CAL_SCALE) + VDIV_CAL_OFFSET), 4);
-//   Serial.print(" loop_hz:");     Serial.print(loopHz, 1);
-//   if (dataStale) Serial.print(" STALE");
-//   if (ads1115_haveData && !dacVerifyOk && lastDacCodeWritten >= 0 && !dacSkipNextVerify) {
-//     Serial.print(" DAC_MISMATCH(");
-//     Serial.print(dacVerifyErrorV, 4);
-//     Serial.print("V)");
-//   }
-//   Serial.println();
-// }
 // Fast line every loop pass:  "v_cap:123.456"
-// Status line at PRINT_HZ:    "v_cap_slow:... dac_meas:... loop_hz:..."
+// Status line at PRINT_HZ:    "v_cap_slow:... dac_meas:... set_v:... loop_hz:..."
 const bool PRINT_FAST_VCAP = true;
 
 void print_service(float v_cap_fast) {
@@ -746,9 +761,12 @@ void print_service(float v_cap_fast) {
   float dac_meas_hv = (ads1115_volts[ADS1115_CH_DAC] * PROBE_MULTIPLIER * VDIV_CAL_SCALE) + VDIV_CAL_OFFSET;
 
   Serial.print("v_cap_slow:");    Serial.print(v_cap_slow, 3);
+  Serial.print(" set_v:");        Serial.print(chargeSetpointV, 1);
   Serial.print(" dac_meas:");     Serial.print(ads1115_volts[ADS1115_CH_DAC], 4);
   Serial.print(" read_dac_set_volt:");  Serial.print(dac_meas_hv, 3);
+  Serial.print(" chg:");          Serial.print(chargePinOn ? 1 : 0);
   Serial.print(" loop_hz:");      Serial.print(loopHz, 1);
+  if (!chargeEnabled()) Serial.print(" CHARGE_OFF");
   if (dataStale) Serial.print(" STALE");
   if (ads1115_haveData && !dacVerifyOk && lastDacCodeWritten >= 0 && !dacSkipNextVerify) {
     Serial.print(" DAC_MISMATCH(");
@@ -756,6 +774,11 @@ void print_service(float v_cap_fast) {
     Serial.print("V)");
   }
   Serial.println();
+}
+
+void setChargePin(bool on) {
+  digitalWrite(PIN_CHRG_CTRL, on ? HIGH : LOW);
+  chargePinOn = on;
 }
 
 // ---------- Setup / loop ----------
@@ -768,7 +791,7 @@ void setup() {
   pinMode(PIN_CHRG_CTRL, OUTPUT);
 
   digitalWrite(PIN_CS, LOW); // idle low so the first HIGH is a clean rising edge
-  digitalWrite(PIN_CHRG_CTRL, LOW); // Initialize charge_control output to low/safe state disconnecting charge circuit, until voltage is measured
+  setChargePin(false);       // charge circuit disconnected until a setpoint is set
 
   // Pulses RST, brings up SPI, and applies + verifies range and parity.
   ads8699_fullReinit();
@@ -784,9 +807,8 @@ void setup() {
     Serial.println("Failed to initialize ADS1115.");
     while (1);
   }
-  // Fastest data rate: ~1.16 ms per conversion, so a 3-channel sweep fits
-  // easily inside a 10 ms (100 Hz) slot. Noise is a bit higher than at
-  // the 128 SPS default; the ADS1115_AVG averaging makes up for it.
+  // Fastest data rate: ~1.16 ms per conversion. Noise is a bit higher than
+  // at the 128 SPS default; the ADS1115_AVG averaging makes up for it.
   ads.setDataRate(RATE_ADS1115_860SPS);
 
   ad5693.reset();
@@ -801,20 +823,19 @@ void setup() {
 
   Wire.setClock(400000);    // 400 kHz
 
-  dacTargetVolts = capVoltToDacVolts(0.0f);   // Initialize the set charge control voltage to 0 for safety.
+  applySetpoint(0.0f);      // Always boot with charging disabled (DAC at 0 V).
+  Serial.printf("Charge setpoint 0 V (charging disabled), max %.1f V. "
+                "Commands: SET <V>, OFF, GET, AVG <n>\r\n", SETPOINT_MAX_V);
 }
 
 
-// Two ways of controlling the capacitor charge circuit:
+// Two ways of controlling the capacitor charge circuit, both driven by the
+// same setpoint (chargeSetpointV):
 // METHOD 1: DAC -> external comparator vs. the probe output (hardware decides).
 //           The ADS1115 verifies the DAC output.
 // METHOD 2: Fast ADC reads the cap voltage and the Teensy drives PIN_CHRG_CTRL.
-// Both currently run side by side, as before.
 
 void loop() {
-  // Optionally change NUM_AVG live by typing a number in Serial Monitor.
-  // checkSerialForNumAvgUpdate();
-
   // ===== FAST PATH: runs every pass =====
   float v_adc = ads8699_readVoltageAveraged(NUM_AVG);                // Read ADC, average of NUM_AVG samples
   float v_cal = (v_adc * ADS8699_CAL_SCALE) + ADS8699_CAL_OFFSET;    // Calibration of the ADC input itself
@@ -822,29 +843,26 @@ void loop() {
   float v_cap = (v_div * VDIV_CAL_SCALE) + VDIV_CAL_OFFSET;          // Probe calibration
 
   if (!CALIBRATION_MODE) {
-    if (v_cap > MIN_VOLTAGE_THRESHOLD) {   // If we suddenly jump to negative voltage, ignore it and wait for the next sample...
+    if (!chargeEnabled()) {
+      setChargePin(false);                // setpoint 0: never charge
+    } else if (v_cap > MIN_VOLTAGE_THRESHOLD) {   // If we suddenly jump to negative voltage, ignore it and wait for the next sample...
       if (dataStale) {
         // Reading isn't trusted (config unconfirmed, or a whole batch
         // failed parity) -- fail safe rather than act on it.
-        // ASSUMPTION: "disconnect charge circuit" is the safe direction.
-        digitalWrite(PIN_CHRG_CTRL, LOW);
+        setChargePin(false);
       }
       // TODO: maybe add some hysteresis???
-      else if (v_cap <= CAPACITOR_VOLT_SETPOINT) {  // below setpoint
-        digitalWrite(PIN_CHRG_CTRL, HIGH);  // connect charge circuit, charging capacitor
+      else if (v_cap <= chargeSetpointV) {  // below setpoint
+        setChargePin(true);    // connect charge circuit, charging capacitor
       }
       else {  // above setpoint
-        digitalWrite(PIN_CHRG_CTRL, LOW);   // disconnect charge circuit.
+        setChargePin(false);   // disconnect charge circuit.
       }
     }
   }
 
   // ===== SLOW PATHS: non-blocking, each self-timed =====
-  //float dacTargetVolts = capVoltToDacVolts(CAPACITOR_VOLT_SETPOINT);
-  //uint16_t code = voltageToDacCode(dacTargetVolts, vref, gain);
-  // dacTargetVolts = 0.30f;
-  //dacTargetVolts = capVoltToDacVolts(800.0f);   // comparator trips at ~800 V on the cap
-  dacTargetVolts = capVoltToDacVolts(250.0f);   // comparator trips at ~800 V on the cap
+  command_service();   // SET/OFF/GET/AVG over Serial -> applySetpoint()
   dac_service();       // writes the DAC only if dacTargetVolts' code changed
   ads1115_service();   // advances the ADS1115 state machine by at most one step
   if (ads1115_newData) {

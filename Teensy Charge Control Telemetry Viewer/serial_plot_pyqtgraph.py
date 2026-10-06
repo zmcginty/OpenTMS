@@ -15,14 +15,20 @@ Telemetry panel (--key mode):
   any extra tokens on that line as flags (e.g. STALE, DAC_MISMATCH(...)),
   and how long ago the last status line arrived.
 
+Charge setpoint control (--key mode):
+  A setpoint box with Apply / Charge OFF buttons sends "SET <volts>" or
+  "OFF" to the charge controller over the same serial port. The firmware's
+  confirmed setpoint (from "ACK SET ..." replies and the "set_v:" status
+  field) is shown next to it and drawn on the graph as a dashed line.
+  Nothing is sent until you press Apply (or Enter in the box).
+
 --hline NAME (repeatable):
   Draws a telemetry field as a horizontal dashed line on the graph, e.g.
-  --hline dac_meas_HV to see the comparator threshold (in cap volts) on top
-  of the capacitor waveform.
+  --hline read_dac_set_volt to see the measured comparator threshold.
 
 Usage:
     python serial_plot_pyqtgraph.py /dev/cu.usbmodem135769401 --key v_cap
-    python serial_plot_pyqtgraph.py /dev/cu.usbmodem135769401 --key v_cap --hline dac_meas_HV
+    python serial_plot_pyqtgraph.py /dev/cu.usbmodem135769401 --key v_cap --hline read_dac_set_volt
     python serial_plot_pyqtgraph.py /dev/cu.usbmodem135769401 --single
     python serial_plot_pyqtgraph.py COM5 --max-abs-volts 10 --max-jump 0.01 --debug
 
@@ -50,20 +56,24 @@ SINGLE_LINE_RE = re.compile(r"^[-+]?\d*\.?\d+$")
 FLOAT_PATTERN = r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?"
 # Any "name:float" field in a line (used to parse the telemetry/status line)
 FIELD_RE = re.compile(rf"(?:^|\s)([A-Za-z_]\w*):({FLOAT_PATTERN})(?=\s|$)")
+# Firmware reply to SET / OFF / GET
+ACK_SET_RE = re.compile(rf"^ACK SET ({FLOAT_PATTERN})")
 
 # Friendlier names for known telemetry fields. Anything not listed is shown
 # under its raw name, so new firmware fields appear automatically.
 FRIENDLY_NAMES = {
-    "v_cap_slow":  "Cap V (slow ADC)",
-    "dac_cmd":     "DAC commanded (V)",
-    "dac_meas":    "DAC measured (V)",
-    "dac_cmd_HV":  "DAC setpoint, commanded (cap V)",
-    "dac_meas_HV": "DAC setpoint, measured (cap V)",
-    "loop_hz":     "Fast loop rate (Hz)",
+    "v_cap_slow":        "Cap V (slow ADC)",
+    "set_v":             "Charge setpoint (cap V)",
+    "dac_meas":          "DAC measured (V)",
+    "read_dac_set_volt": "DAC setpoint, measured (cap V)",
+    "chg":               "Charge output (1 = on)",
+    "loop_hz":           "Fast loop rate (Hz)",
 }
 
 STATUS_COLUMNS = 3          # telemetry fields per row in the panel
 STATUS_STALE_AFTER_S = 1.0  # status age turns orange after this long
+SETPOINT_FIELD = "set_v"    # status field holding the firmware's active setpoint
+SETPOINT_CONFIRM_S = 2.0    # warn if the firmware hasn't confirmed a SET by then
 
 
 def make_key_regex(key):
@@ -84,7 +94,12 @@ def parse_args():
                         "Other labeled lines go to the telemetry panel.")
     p.add_argument("--hline", type=str, action="append", default=[],
                    help="Draw this telemetry field as a horizontal line on the graph "
-                        "(repeatable), e.g. --hline dac_meas_HV")
+                        "(repeatable), e.g. --hline read_dac_set_volt")
+    p.add_argument("--setpoint-max", type=float, default=1000.0,
+                   help="Upper limit of the setpoint box, in cap volts (default 1000). "
+                        "The firmware enforces its own SETPOINT_MAX_V regardless.")
+    p.add_argument("--no-setpoint", action="store_true",
+                   help="Hide the charge setpoint control")
     p.add_argument("--show-status", action="store_true",
                    help="With --key: also echo non-key lines to the console")
     p.add_argument("--window", type=int, default=5000,
@@ -131,6 +146,9 @@ def main():
     one_value = args.single or args.key is not None
     key_re = make_key_regex(args.key) if args.key else None
     value_label = args.key if args.key else "voltage"
+    setpoint_enabled = bool(args.key) and not args.no_setpoint
+    if setpoint_enabled and SETPOINT_FIELD not in args.hline:
+        args.hline.append(SETPOINT_FIELD)   # always draw the setpoint on the graph
 
     print(f"Active filters: max_abs_volts={args.max_abs_volts}, "
           f"max_jump={args.max_jump}, jump_window={args.jump_window}, "
@@ -138,7 +156,7 @@ def main():
 
     print(f"Opening {args.port} @ {args.baud} baud ...", flush=True)
     try:
-        ser = serial.Serial(args.port, args.baud, timeout=0.05)
+        ser = serial.Serial(args.port, args.baud, timeout=0.05, write_timeout=0.5)
     except serial.SerialException as e:
         print(f"FAILED to open port: {e}", flush=True)
         print("Common causes: wrong port name, another program already has it open, "
@@ -182,6 +200,14 @@ def main():
         "status_time": None,       # time.time() of the latest status line
         "status_dirty": False,     # panel needs a refresh
         "last_value": None,        # latest plotted (fast) value
+        # Setpoint control
+        "sp_requested": None,      # last setpoint we sent (cap V)
+        "sp_requested_time": 0.0,
+        "sp_box_synced": False,    # box initialised from the firmware's value yet?
+        "sp_box_touched": False,   # user has edited the box
+        "last_reply": None,        # latest ACK/ERR line from the firmware
+        "reply_dirty": False,
+        "include_hlines_in_y": True,
     }
 
     # --- pyqtgraph setup ---
@@ -190,7 +216,7 @@ def main():
 
     win = QtWidgets.QWidget()
     win.setWindowTitle(f"Live serial voltage -- {args.port} @ {args.baud} baud")
-    win.resize(1100, 750)
+    win.resize(1100, 800)
     layout = QtWidgets.QVBoxLayout(win)
 
     # Control bar: adjustable visible window + a "follow latest" toggle so the
@@ -206,6 +232,11 @@ def main():
     follow_checkbox = QtWidgets.QCheckBox("Follow latest (auto-scroll/auto-scale)")
     follow_checkbox.setChecked(True)
     controls.addWidget(follow_checkbox)
+
+    hline_y_checkbox = QtWidgets.QCheckBox("Include setpoint in Y scale")
+    hline_y_checkbox.setChecked(True)
+    if args.hline:
+        controls.addWidget(hline_y_checkbox)
     controls.addStretch()
     layout.addLayout(controls)
 
@@ -216,6 +247,72 @@ def main():
     def on_follow_changed(checked):
         state["follow"] = bool(checked)
     follow_checkbox.stateChanged.connect(on_follow_changed)
+
+    def on_hline_y_changed(checked):
+        state["include_hlines_in_y"] = bool(checked)
+    hline_y_checkbox.stateChanged.connect(on_hline_y_changed)
+
+    # --- Charge setpoint control ---
+    sp_box = QtWidgets.QGroupBox("Charge setpoint")
+    sp_row = QtWidgets.QHBoxLayout(sp_box)
+    sp_row.addWidget(QtWidgets.QLabel("Set to (cap V):"))
+    sp_spin = QtWidgets.QDoubleSpinBox()
+    sp_spin.setRange(0.0, args.setpoint_max)
+    sp_spin.setDecimals(1)
+    sp_spin.setSingleStep(10.0)
+    sp_spin.setKeyboardTracking(False)
+    sp_spin.setMinimumWidth(110)
+    sp_row.addWidget(sp_spin)
+    sp_apply_btn = QtWidgets.QPushButton("Apply")
+    sp_row.addWidget(sp_apply_btn)
+    sp_off_btn = QtWidgets.QPushButton("Charge OFF (0 V)")
+    sp_off_btn.setStyleSheet("font-weight: bold;")
+    sp_row.addWidget(sp_off_btn)
+    sp_row.addSpacing(20)
+    sp_fw_label = QtWidgets.QLabel("Firmware setpoint: waiting...")
+    sp_fw_label.setStyleSheet("font-family: monospace; font-size: 15px; font-weight: bold;")
+    sp_row.addWidget(sp_fw_label)
+    sp_row.addSpacing(20)
+    sp_reply_label = QtWidgets.QLabel("")
+    sp_reply_label.setStyleSheet("font-family: monospace; font-size: 12px; color: gray;")
+    sp_row.addWidget(sp_reply_label)
+    sp_row.addStretch()
+
+    if setpoint_enabled:
+        layout.addWidget(sp_box)
+
+    def send_command(text):
+        try:
+            ser.write((text + "\n").encode("ascii"))
+            print(f">> {text}", flush=True)
+            return True
+        except (serial.SerialException, serial.SerialTimeoutException) as e:
+            print(f"Failed to send '{text}': {e}", flush=True)
+            state["last_reply"] = f"SEND FAILED: {e}"
+            state["reply_dirty"] = True
+            return False
+
+    def apply_setpoint():
+        sp_spin.interpretText()   # pick up a value typed but not yet committed
+        v = round(sp_spin.value(), 1)
+        if send_command(f"SET {v:.1f}"):
+            state["sp_requested"] = v
+            state["sp_requested_time"] = time.time()
+
+    def charge_off():
+        sp_spin.setValue(0.0)
+        if send_command("OFF"):
+            state["sp_requested"] = 0.0
+            state["sp_requested_time"] = time.time()
+
+    def on_spin_edited():
+        state["sp_box_touched"] = True
+
+    sp_apply_btn.clicked.connect(apply_setpoint)
+    sp_off_btn.clicked.connect(charge_off)
+    sp_spin.lineEdit().returnPressed.connect(apply_setpoint)
+    sp_spin.lineEdit().textEdited.connect(lambda _t: on_spin_edited())
+    sp_spin.valueChanged.connect(lambda _v: on_spin_edited())
 
     # --- Telemetry panel ---
     # A boxed grid of "name: value" labels, created on the fly as new fields
@@ -271,6 +368,11 @@ def main():
 
     win.show()
 
+    # Ask the firmware for its current setpoint (the status line reports it
+    # too, so this is just to show it sooner).
+    if setpoint_enabled:
+        send_command("GET")
+
     def handle_status_line(decoded):
         """Parse a non-key line. Returns True if it looked like telemetry
         (had at least one name:value field)."""
@@ -284,6 +386,50 @@ def main():
         state["status_time"] = time.time()
         state["status_dirty"] = True
         return True
+
+    def handle_reply(decoded):
+        """Handle an 'ACK ...' / 'ERR ...' reply from the firmware."""
+        state["last_reply"] = decoded
+        state["reply_dirty"] = True
+        m = ACK_SET_RE.match(decoded)
+        if m:
+            state["status_fields"][SETPOINT_FIELD] = float(m.group(1))
+            state["status_dirty"] = True
+        print(decoded, flush=True)
+
+    def refresh_setpoint_panel():
+        if state["reply_dirty"]:
+            state["reply_dirty"] = False
+            reply = state["last_reply"] or ""
+            is_err = not reply.startswith("ACK")
+            sp_reply_label.setStyleSheet(
+                "font-family: monospace; font-size: 12px; "
+                + ("color: #e04040; font-weight: bold;" if is_err else "color: gray;"))
+            sp_reply_label.setText(reply)
+
+        fw = state["status_fields"].get(SETPOINT_FIELD)
+        if fw is None:
+            return
+        if not state["sp_box_synced"]:
+            state["sp_box_synced"] = True
+            if not state["sp_box_touched"]:
+                sp_spin.blockSignals(True)
+                sp_spin.setValue(fw)
+                sp_spin.blockSignals(False)
+
+        req = state["sp_requested"]
+        pending = (req is not None and abs(fw - req) > 0.05)
+        if fw < 1.0:
+            text, color = f"Firmware setpoint: {fw:.1f} V  (charging OFF)", "gray"
+        else:
+            text, color = f"Firmware setpoint: {fw:.1f} V", "#30c030"
+        if pending:
+            late = (time.time() - state["sp_requested_time"]) > SETPOINT_CONFIRM_S
+            text += f"  (requested {req:.1f} V{' -- NOT CONFIRMED' if late else '...'})"
+            color = "orange"
+        sp_fw_label.setStyleSheet(
+            f"font-family: monospace; font-size: 15px; font-weight: bold; color: {color};")
+        sp_fw_label.setText(text)
 
     def refresh_status_panel():
         if state["last_value"] is not None:
@@ -325,6 +471,9 @@ def main():
             age_label.setStyleSheet(f"font-family: monospace; font-size: 12px; color: {color};")
             age_label.setText(f"status: last update {age:.1f} s ago")
 
+        if setpoint_enabled:
+            refresh_setpoint_panel()
+
     def read_and_process():
         """Drain whatever serial data is available, applying all filters.
 
@@ -353,6 +502,8 @@ def main():
             if not reconnected:
                 print("Could not reconnect after 15s. Check the USB cable/port.", flush=True)
                 timer.stop()
+            elif setpoint_enabled:
+                send_command("GET")   # board may have rebooted (setpoint back to 0 V)
             return
 
         if not chunk:
@@ -364,6 +515,10 @@ def main():
         for raw_bytes in complete_lines:
             decoded = raw_bytes.decode(errors="replace").strip()
             if not decoded:
+                continue
+
+            if decoded.startswith(("ACK ", "ERR ")):
+                handle_reply(decoded)
                 continue
 
             if key_re is not None:
@@ -481,6 +636,10 @@ def main():
                     combined = (np.concatenate([y_filt_slice, y_raw_slice])
                                 if curve_raw is not None else y_filt_slice)
                     y_lo, y_hi = float(combined.min()), float(combined.max())
+                    if state["include_hlines_in_y"]:
+                        for line in hlines.values():
+                            y_lo = min(y_lo, float(line.value()))
+                            y_hi = max(y_hi, float(line.value()))
                     if args.min_yspan is not None and (y_hi - y_lo) < args.min_yspan:
                         center = (y_hi + y_lo) / 2
                         y_lo = center - args.min_yspan / 2
