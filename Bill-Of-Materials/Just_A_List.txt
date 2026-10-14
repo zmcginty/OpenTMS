@@ -1,0 +1,30 @@
+data for TMS schematic & documentation;
+
+main discharge capacitors; 	Kemet C44UVGT7105M34K
+	datahseet; 	https://yageogroup.com/content/datasheet/asset/file/KEM_F3119_C44U_M
+	
+
+main IGBT gate drivers; 	Concept 1SD418F2
+	datasheet;	https://www.mouser.com/datasheet/2/328/1SD418F2-FZ1200R33KF2-779363.pdf
+
+main IGBT switches;			Eupec/Infineon FZ1200R33KL2
+	datasheet;				https://www.infineon.com/assets/row/public/documents/60/49/infineon-fz1200r33he3-datasheet-en.pdf?fileId=db3a304327b8975001283eeed2944021
+
+Snubber Capacitors for main IGBT switchs;       SNMPW041508LB8KS00 
+    link; https://www.mouser.com/datasheet/3/558/1/d_WIMA_Snubber_MKP.pdf
+
+Diodes used with main IGBT switches;            Infineon DD340N22SHPSA1
+    link; https://www.digikey.com/en/products/detail/infineon-technologies/DD340N22SHPSA1/7791758
+    datasheet; https://www.infineon.com/assets/row/public/documents/24/49/infineon-dd340n22s-datasheet-de.pdf
+
+Diodes used to recitify Microwave Transformer to main discharge capacitors; MD110-16
+    Datasheet; http://pdf.tixer.ru/916450.pdf
+
+Variable Transformer used to control main capcitor charge; Vevor 3000VA
+    link; https://www.vevor.com/category-c_107965/product-p_010748217652
+
+Teensy Controller;          Teensy 4.0 or 4.1
+
+Voltage Level Shifters used;    74HCT125N for signals going out from the Teensy
+                                www.sparkfun.com/sparkfun-logic-level-converter-bi-directional.html for signals going into teensy.
+
