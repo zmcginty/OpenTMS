@@ -152,7 +152,8 @@ I've made some additions to the pulse-driver control circuit as well; for a whil
 
 ---
 ## Coil Field Simulation
-While I've built coils similar to what other systems use, I have difficulty understanding how fields from multiple coils interract/interfere to create focused peaks. I've asked Claude to build some tools to help visualise magnetic field strength in a 3-d map of various types of coils here [Coil Field Simulator Scripts](Coil Field Simulator Scripts/). The simulations show for instance what happens to the field when you reverse current of one of the two figure-8 windings, or have the two coils overlap. I'm hoping that I can gather data with the Coil-Field Measurement System mentioned below, to confirm what these simulations show.
+While I've built coils similar to what other systems use, I have difficulty understanding how fields from multiple coils interract/interfere to create focused peaks. I've asked Claude to build some tools to help visualise magnetic field strength in a 3-d map of various types of coils here [Coil_Field_Simulator_Scripts](Coil_Field_Simulator_Scripts/).
+ The simulations show for instance what happens to the field when you reverse current of one of the two figure-8 windings, or have the two coils overlap. I'm hoping that I can gather data with the Coil-Field Measurement System mentioned below, to confirm what these simulations show.
 I know that TMS companies construct special coils for studies called "sham-coils" which are meant to make the same sound, but the windings are wired such that the two halves of the figure-8 cancel out. These coils are used for TMS efficacy studies to give someone placebo treatment. 
 
 ## Coil Field Mapping System
