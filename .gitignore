@@ -8,3 +8,6 @@ fp-info-cache
 \#auto_saved_files#
 _autosave-*
 Teensy Charge Control Telemetry Viewer/*.csv
+TMS-Coil Field Simulator Scripts/Version1/tms_output/
+TMS-Coil Field Simulator Scripts/Version2/tms_output/
+TMS-Coil Field Simulator Scripts/Version3/tms_output/
