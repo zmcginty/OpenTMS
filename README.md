@@ -152,6 +152,13 @@ I've made some additions to the pulse-driver control circuit as well; for a whil
 
 ---
 
+## Coil-Field Measurement System
+I've begun the coil-measurement system! at the moment I only have the data-acquisition side built and working which is in Coil-Field_Measurement_DAQ, and will have to integrate this with a 3-axis machine to move a probe around the coil to take measurements. 
+As much as I wanted to use a high-speed ADC and teensy to measure pulses, it would have been alot of work to read and buffer 1M samples/s.... So I decided to use a faster USB oscilliscope instead; [DreamSourceLab DSCope](https://www.dreamsourcelab.com/product/dscope-series/) and had Claude write some python scripts which access it via the sigrok library, and visualize the results of the measurements it takes. 
+- CH0 of the scope is measuring custom magnetic probe (a small coil of magnet-wire connected to RG316 shielded cable) 
+- CH1 of the scope measures a rogowski current probe measuring the current through the coil, this is so the magentic fieldn strength can be scaled by the measured current to account for any difference in pulse strength.
+
+
 ## Safety Resources
 - [TMS Safety with respect to seizures](https://pmc.ncbi.nlm.nih.gov/articles/PMC7732158/pdf/ndt-16-2989.pdf)
 - [General article discussion factors which can decrease seizure-threshold (make it more likely you'll have a seizure)](https://www.wmchealth.org/living-well/7-everyday-factors-that-can-increase-seizure-risk)
