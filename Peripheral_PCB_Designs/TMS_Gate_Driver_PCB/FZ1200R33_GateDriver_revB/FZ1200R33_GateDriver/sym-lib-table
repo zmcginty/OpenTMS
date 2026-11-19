@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "GD")(type "KiCad")(uri "${KIPRJMOD}/GD.kicad_sym")(options "")(descr "Gate driver custom symbols"))
+)

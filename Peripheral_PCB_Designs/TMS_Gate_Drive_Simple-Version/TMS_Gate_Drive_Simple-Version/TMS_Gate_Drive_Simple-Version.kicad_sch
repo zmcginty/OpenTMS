@@ -1,0 +1,350 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "33dc30ba-7465-5ff9-8d1c-e3d3ab1210d6")
+	(paper "A3")
+	(title_block
+		(title "FZ1200R33KF2 plug-on gate driver rev B (open design)")
+		(date "2026-11-09")
+		(rev "B")
+	)
+	(lib_symbols)
+	(text "FZ1200R33KF2 (3.3 kV / 1200 A, IHV 190x140) PLUG-ON GATE DRIVER rev B - 1SD418FI/1SP0635-class, no Power Integrations/CONCEPT parts"
+		(exclude_from_sim no)
+		(at 30 170 0)
+		(effects
+			(font
+				(size 2.2 2.2)
+			)
+			(justify left bottom)
+		)
+		(uuid "10d6cb07-d300-5a39-af70-6488a8955056")
+	)
+	(text "Mounting: C/E/G M4 terminal holes and support hole at the 1SP0635 positions. MGJ6 barrier is functional (3 kVDC) - see README."
+		(exclude_from_sim no)
+		(at 30 194 0)
+		(effects
+			(font
+				(size 2.2 2.2)
+			)
+			(justify left bottom)
+		)
+		(uuid "5a465140-338d-5265-a6a6-6d4a39989d60")
+	)
+	(text "Features: +15/-10 V gate drive, ~+/-15 A peak, separate RGon/RGoff, advanced active clamping (~2.7 kV), VCE(sat) short-circuit"
+		(exclude_from_sim no)
+		(at 30 182 0)
+		(effects
+			(font
+				(size 2.2 2.2)
+			)
+			(justify left bottom)
+		)
+		(uuid "87c74b59-9d89-52d6-bc68-44027a265fc2")
+	)
+	(text "Interfaces: 15 V power on 1x4 2.54 mm header (J1) or JST-XH (J2); fiber command input HFBR-2521Z; fiber status output HFBR-1521Z."
+		(exclude_from_sim no)
+		(at 30 176 0)
+		(effects
+			(font
+				(size 2.2 2.2)
+			)
+			(justify left bottom)
+		)
+		(uuid "e5faf8f3-74d2-5ddc-b497-cffea93a615d")
+	)
+	(text "detection with ~5 us blanking, supply UVLO, 1 s fault blocking time, status feedback. Isolated supply: Murata MGJ6D121510SC (COTS)."
+		(exclude_from_sim no)
+		(at 30 188 0)
+		(effects
+			(font
+				(size 2.2 2.2)
+			)
+			(justify left bottom)
+		)
+		(uuid "fcea7a40-e18a-5d9e-bec0-314c6145e28a")
+	)
+	(sheet
+		(at 150 50)
+		(size 90 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "21e5545e-6b2b-560b-9f8a-9b77397e3d94")
+		(property "Sheetname" "Secondary_Power"
+			(at 150 49.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Secondary_Power.kicad_sch"
+			(at 150 90.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "TMS_Gate_Drive_Simple-Version"
+				(path "/33dc30ba-7465-5ff9-8d1c-e3d3ab1210d6"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 270 120)
+		(size 90 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "8e89015a-1d0c-582e-9573-3881c3d1e920")
+		(property "Sheetname" "Active_Clamp_Terms"
+			(at 270 119.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Active_Clamp_Terms.kicad_sch"
+			(at 270 160.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "TMS_Gate_Drive_Simple-Version"
+				(path "/33dc30ba-7465-5ff9-8d1c-e3d3ab1210d6"
+					(page "7")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 30 120)
+		(size 90 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "9e6b2263-33e8-5e2f-a76c-36edd3591a08")
+		(property "Sheetname" "Desat_Detection"
+			(at 30 119.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Desat_Detection.kicad_sch"
+			(at 30 160.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "TMS_Gate_Drive_Simple-Version"
+				(path "/33dc30ba-7465-5ff9-8d1c-e3d3ab1210d6"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 270 50)
+		(size 90 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "a733c73e-22fb-5af2-868b-bb346eaee181")
+		(property "Sheetname" "Fiber_Logic"
+			(at 270 49.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Fiber_Logic.kicad_sch"
+			(at 270 90.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "TMS_Gate_Drive_Simple-Version"
+				(path "/33dc30ba-7465-5ff9-8d1c-e3d3ab1210d6"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 150 120)
+		(size 90 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "cb924bfc-8ff1-5131-930e-8b16050237b9")
+		(property "Sheetname" "Gate_Stage"
+			(at 150 119.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Gate_Stage.kicad_sch"
+			(at 150 160.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "TMS_Gate_Drive_Simple-Version"
+				(path "/33dc30ba-7465-5ff9-8d1c-e3d3ab1210d6"
+					(page "6")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 30 50)
+		(size 90 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "efc7e408-03a6-5232-9d31-d1a640b0a1d9")
+		(property "Sheetname" "Primary_Power"
+			(at 30 49.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Primary_Power.kicad_sch"
+			(at 30 90.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "TMS_Gate_Drive_Simple-Version"
+				(path "/33dc30ba-7465-5ff9-8d1c-e3d3ab1210d6"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

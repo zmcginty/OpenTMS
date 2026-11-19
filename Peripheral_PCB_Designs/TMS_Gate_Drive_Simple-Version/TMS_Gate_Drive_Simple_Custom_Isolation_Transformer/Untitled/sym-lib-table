@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "igbt_drv") (type "KiCad") (uri "${KIPRJMOD}/igbt_drv.kicad_sym") (options "") (descr "Project symbols"))
+)

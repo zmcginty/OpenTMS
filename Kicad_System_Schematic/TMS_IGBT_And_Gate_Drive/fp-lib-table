@@ -1,0 +1,7 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "ADS8699IPWR") (type "KiCad") (uri "${KIPRJMOD}/ADS8699IPWR.pretty") (options "") (descr ""))
+	(lib (name "AD5683RARMZ") (type "KiCad") (uri "/Users/furiousgeorge/digikey-partner-kicad-library/Hammond Manufacturing/Untitled/AD5683RARMZ.pretty") (options "") (descr ""))
+	(lib (name "Teensy") (type "KiCad") (uri "${KIPRJMOD}/Teensy.pretty") (options "") (descr ""))
+	(lib (name "Infineon_FZ1200R33_IGBT") (type "KiCad") (uri "/Users/furiousgeorge/OpenTMS/Kicad System Schematic/Infineon_FZ1200R33_IGBT.pretty") (options "") (descr ""))
+)

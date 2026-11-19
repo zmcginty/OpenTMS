@@ -1,0 +1,8 @@
+(footprint "Terminal_M4" (version 20221018) (generator pcbnew) (layer "F.Cu")
+  (descr "Plated M4 hole for direct screw mounting onto the module auxiliary terminal")
+  (attr through_hole)
+  (fp_text reference "REF**" (at 0 -6) (layer "F.SilkS") (effects (font (size 1 1) (thickness 0.15))))
+  (fp_text value "M4" (at 0 6) (layer "F.Fab") (effects (font (size 1 1) (thickness 0.15))))
+  (fp_circle (center 0 0) (end 5.25 0) (stroke (width 0.05) (type solid)) (fill none) (layer "F.CrtYd"))
+  (pad "1" thru_hole circle (at 0 0) (size 9 9) (drill 4.3) (layers "*.Cu" "*.Mask"))
+)

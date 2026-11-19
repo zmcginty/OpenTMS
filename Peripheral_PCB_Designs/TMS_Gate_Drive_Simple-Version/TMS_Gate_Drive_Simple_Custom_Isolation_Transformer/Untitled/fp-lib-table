@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "igbt_drv") (type "KiCad") (uri "${KIPRJMOD}/igbt_drv.pretty") (options "") (descr "Project footprints"))
+)

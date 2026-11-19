@@ -1,0 +1,165 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "1aa7bac0-5a8f-4115-a13a-31398346349a")
+	(paper "A4")
+	(title_block
+		(title "FZ1200R33KF2 bolt-on gate driver")
+		(rev "D")
+		(company "Prototype, not safety approved")
+	)
+	(lib_symbols)
+	(text "All logic is referenced to VEE (-15 V rail). Mounting and creepage notes in README."
+		(exclude_from_sim no)
+		(at 50 25 0)
+		(effects
+			(font
+				(size 2 2)
+			)
+			(justify left bottom)
+		)
+		(uuid "49be3b5c-f41c-4be0-bdb9-2c62af1474e3")
+	)
+	(sheet
+		(at 50 40)
+		(size 90 22)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "06fa6eb8-02aa-4890-a68d-687a68b5e95f")
+		(property "Sheetname" "Power and isolation"
+			(at 50 39.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.5 1.5)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "power.kicad_sch"
+			(at 50 62.7 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.2 1.2)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "Untitled"
+				(path "/1aa7bac0-5a8f-4115-a13a-31398346349a"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 50 78)
+		(size 90 22)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "5c86a20e-37d2-474d-813d-b2b4494e1ecf")
+		(property "Sheetname" "Fiber, protection logic"
+			(at 50 77.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.5 1.5)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "control.kicad_sch"
+			(at 50 100.7 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.2 1.2)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "Untitled"
+				(path "/1aa7bac0-5a8f-4115-a13a-31398346349a"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 50 116)
+		(size 90 22)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "d34d9887-f993-4721-b08d-c97a817082a9")
+		(property "Sheetname" "Output stage, AAC, Vce sense"
+			(at 50 115.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.5 1.5)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "output.kicad_sch"
+			(at 50 138.7 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.2 1.2)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "Untitled"
+				(path "/1aa7bac0-5a8f-4115-a13a-31398346349a"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

@@ -1,0 +1,72 @@
+
+(rules PCB FZ1200R33_GateDriver.dsn
+  (snapAngle 
+    fortyfive_degree
+  )
+  (rule
+    (width 200.0)
+    (clearance 200.0)
+    (clearance 100.0 (type smd_to_turn_gap))
+    (clearance 50.0 (type smd))
+    (clearance 500.0 (type "board_edge"))
+  )
+  (padstack "Via[0-3]_600:300_um"
+    (shape
+      (circle F.Cu 600.0 0.0 0.0)
+    )
+    (shape
+      (circle In1.Cu 600.0 0.0 0.0)
+    )
+    (shape
+      (circle In2.Cu 600.0 0.0 0.0)
+    )
+    (shape
+      (circle B.Cu 600.0 0.0 0.0)
+    )
+    (attach off)
+  )
+  (padstack "Via[0-3]_500:300_um"
+    (shape
+      (circle F.Cu 500.0 0.0 0.0)
+    )
+    (shape
+      (circle In1.Cu 500.0 0.0 0.0)
+    )
+    (shape
+      (circle In2.Cu 500.0 0.0 0.0)
+    )
+    (shape
+      (circle B.Cu 500.0 0.0 0.0)
+    )
+    (attach off)
+  )
+  (via 
+    "Via[0-3]_600:300_um" "Via[0-3]_600:300_um" default
+  )
+  (via 
+    "Via[0-3]_500:300_um" "Via[0-3]_500:300_um" default
+  )
+  (viaRule
+    default "Via[0-3]_500:300_um"
+  )
+  (viaRule
+    default "Via[0-3]_600:300_um"
+  )
+  (class default
+    "/GND_P" "/COM_E" /VN10 "/VIN_P" /nGATE /DESAT /VP15 "/GON_B"
+    "/OUT_B" /BASE /DS3 /DS2 "/VIN_M" "/REF_UV" /GATE /DS1
+    "/DS_R" "/SYNC_P" /VL5 "/GATE_EN" /COLL "/LED_F" "/VIN_F" "/VIN_RAW"
+    "/OUT_A" "/GOFF_A" "/RX_OUT" "/RX_F" /CONT "/TX_A" "/LED_P" /READY
+    /OL /OH "/ADJ_L" /BLOCK /CB "/GON_A" /ACK4 /ACK3
+    /CG /CLMP /ACK2 /nDESAT /TMR /ACK1 "/GOFF_B" "/TX_K"
+    /CMD /DSD /DREF /UVS
+    (clearance_class default)
+    (via_rule default)
+    (rule
+      (width 200.0)
+    )
+    (circuit 
+      (use_layer F.Cu In1.Cu In2.Cu B.Cu)
+    )
+  )
+)

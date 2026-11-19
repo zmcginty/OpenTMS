@@ -1,23 +1,32 @@
-data for TMS schematic & documentation;
-
-main discharge capacitors; 	Kemet C44UVGT7105M34K
+Design #2 and #3 Power and Controls
+main discharge capacitors; 	
+    model;  Kemet C44UVGT7105M34K
+    description; 1.8kV, 1050uF Film DC-Link Capacitor
 	datahseet; 	https://yageogroup.com/content/datasheet/asset/file/KEM_F3119_C44U_M
 	
 
-main IGBT gate drivers; 	Concept 1SD418F2
+main IGBT gate drivers; 	
+    model;      Concept 1SD418F2
+    description;    gate driver specific for the FZ1200R33 IGBT module. Can drive up to +- 18A to the IGBT gate. Rg-On=1.6 ohm, Rg-Off=3.1 ohm.
 	datasheet;	https://www.mouser.com/datasheet/2/328/1SD418F2-FZ1200R33KF2-779363.pdf
 
-main IGBT switches;			Eupec/Infineon FZ1200R33KL2
+main IGBT switches;			
+    model;      Eupec/Infineon FZ1200R33KL2
+    description;    3.3kV 3-channel IGBT module. 1200A continuous, 2400A repetitive peak per-channel.
 	datasheet;				https://www.infineon.com/assets/row/public/documents/60/49/infineon-fz1200r33he3-datasheet-en.pdf?fileId=db3a304327b8975001283eeed2944021
 
-Snubber Capacitors for main IGBT switchs;       SNMPW041508LB8KS00 
-    link; https://www.mouser.com/datasheet/3/558/1/d_WIMA_Snubber_MKP.pdf
+Snubber Capacitors for main IGBT switchs;       
+    model;      SNMPW041508LB8KS00 
+    description;    3kV, 1.5uF 10% Snubber-Capacitor
+    link;       https://www.mouser.com/datasheet/3/558/1/d_WIMA_Snubber_MKP.pdf
 
-Diodes used with main IGBT switches;            Infineon DD340N22SHPSA1
-    link; https://www.digikey.com/en/products/detail/infineon-technologies/DD340N22SHPSA1/7791758
-    datasheet; https://www.infineon.com/assets/row/public/documents/24/49/infineon-dd340n22s-datasheet-de.pdf
+Diodes used with main IGBT switches;            
+    model;      Infineon DD340N22SHPSA1
+    description;    2.2kV, dual series diode module. 330A continuous, 10kA surge (@25c)
+    link;       https://www.digikey.com/en/products/detail/infineon-technologies/DD340N22SHPSA1/7791758
+    datasheet;  https://www.infineon.com/assets/row/public/documents/24/49/infineon-dd340n22s-datasheet-de.pdf
 
-Diodes used to recitify Microwave Transformer to main discharge capacitors; MD110-16
+Diodes used in charge-circuit recitifier (rectifying Microwave Transformer to main discharge capacitors); MD110-16
     Datasheet; http://pdf.tixer.ru/916450.pdf
 
 Variable Transformer used to control main capcitor charge; Vevor 3000VA
@@ -28,3 +37,15 @@ Teensy Controller;          Teensy 4.0 or 4.1
 Voltage Level Shifters used;    74HCT125N for signals going out from the Teensy
                                 www.sparkfun.com/sparkfun-logic-level-converter-bi-directional.html for signals going into teensy.
 
+
+
+Design #1 Power Electronics
+
+main SCR switch;
+    model;      TT570N16KOF
+    description;    1.6kV dual series diode module (3.2kV for whole module). 600A continuous, 17kA surge
+
+Gate drivers for all SCR modules; 
+    Whatever decent-size mosfet I could find, low-side switching a 1:1 isolation transformer which has one or multiple outputs which go to the SCR gate inputs.
+    Pulse-width and edge-rates don't really seem to matter much here for the SCRs. there's no turn-off spike.... life's easy. Just throw is a pulse shorter than the time it takes to discharge your capacitor (because the SCR is going to latch and FULLY discharge your cap.)
+    
