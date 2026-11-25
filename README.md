@@ -69,10 +69,11 @@ My current switch of choice is the **Infineon/Eupec FZ1200R33KF2** — inexpensi
 
 ## Gate Drivers
 
-I've used two Power Integrations gate drivers with this IGBT:
+I've used two Power Integrations gate drivers with this IGBT listed below: but due to limitations and cost, I'm working on designing a custom gate-driver PCB which is still in progress.
 
 - **2SC0535T2G0-33** — Functional, but lacks features like active clamping to protect against turn-off voltage spikes. Requires a custom PCB with gate turn-on/turn-off resistors and capacitors.
-- **1SD418F2-FZ1200R33KF2** — Purpose-built for the FZ1200R33KF2; bolts directly onto the device pads. Requires only a 15VDC supply (I use a 1A source). It communicates over two fiber-optic channels (input signal and output/status), which I drive with custom PCBs using AFBR-1624Z HFBR transmitter/receiver modules, controlled by a Teensy 4.1 through a 3.3V→5V level shifter.
+- **1SD418F2-FZ1200R33KF2** — Purpose-built for the FZ1200R33KF2; bolts directly onto the device pads. Requires only a 15VDC supply (I use a 1A source). It communicates over two fiber-optic channels (input signal and output/status), which I drive with custom PCBs using AFBR-1624Z HFBR transmitter/receiver modules, controlled by a Teensy 4.1 through a 3.3V→5V level shifter. NOTE: Put fiber-optic receivers (receiving fiber feedback from gate-driver) as close to Teensy/MCU as possible to reduce noise and false fault detection.
+- **Custom Gate-Driver (Coming Soon)** — I've noticed that the 1SD418F2 gate drivers I'm using will sometimes detect short-circuits during operation at higher power. This could be legitamite but I'm not exceeding any voltage or current limits as measured by probes. I'm designing a custom gate-driver board since buying gate-drivers new for this IGBT with active-clamping and feedback are over $400, I want to see if I can build them for at most half of that. This will most likely involve having to wind custom isolation-transformers, since I've only found one company who makes isolation transformers rated for ~4-6kV constantly. I've ordered some parts and a 10kV HiPot tester..... more to come later.
 
 ---
 
@@ -80,6 +81,9 @@ I've used two Power Integrations gate drivers with this IGBT:
 
 ### Differential Voltage Measurement
 Monitoring Vce (collector-emitter voltage) across each IGBT is critical to staying within its rating — I keep a safety margin and stay below 2.5kV on 3.3kV-rated devices. Since these switches operate on the high side, measurement requires a high-voltage differential probe: I use a **Micsig DP20003** (5600V, 100MHz). A similar, lower-range HV differential probe (1300V) monitors the main capacitor bank voltage.
+### Custom HV Diff probe
+I'm working on designing a custom HV diff probe since Micsig's new 7kV probe (only other voltage ratings are 700, 1300, 3000) is ~$700, I think it's worth it to try designing a custom probe PCB with isolated dc-dc, voltage divider, and diff opamps. For measuring IGBT voltages, I don't think I need 100MHz bandwidth, so I'm shooting for 50MHz, and hoping to get the price down to less than $100. I'm waiting on boards to show up and will update once I test them! They will probably need to be potted or atleast conformally coated to work in a variety of environments/humidity.
+
 
 ### Current Measurement
 A shunt resistor was my first attempt but never produced a trustworthy signal. Two methods have worked well since:
@@ -130,11 +134,13 @@ I've been realizing the importance of keeping switching loops tight, and have sh
 Should double coil pulse current relative to the two-switch flyback topology by enabling current reversal. The complexity of positioning four large IGBT switches and the associated snubbers and diodes close to eachother, with cooling is going to be difficult without adding parasitic inductance that would offset the gains.
 
 ---
-## Phase-Controlled Rectum-Fryer
+## Phase-Controlled Rectifier
 <p align="center"><img src="System_Photos/IMG_2403.jpg" alt="Newly-Built Phase-Control Rectifier" width="200"/></p>
 <p align="center"><em>Jankily built phase-control rectum-fryer, with o-smelliscope for proof</em></p>
 
 I've built a phase control rectum-fryer, it works! Gotta increase the chooch-factor of the gate drivers primary drive-transistors a bit because the giant SCRs I'm using are thirsty (I think this is causing the ripple in the output waveform). Still TODO here is add another DAC for the teensy to control the phase-angle the controlled rectumfryer fires at (how much of the wave it turns to DC), and add all the PID loops and stuff here. Also, just ignore the fact that the output waveform is upside-downwards in the photo. I'll flip it I promise.
+
+Update; I'm seeing weird behavior when adding a microwave trasformer to step up voltage, the AC waveform gets heavily distorted when I begin triggering the SCRs, and they don't seem to be fully triggering..... It works fine at the same voltage coming straight from the variable transformer, but doesn't work going through the microwave step-up transformer.
 
 
 ## Charge-Control Circuit

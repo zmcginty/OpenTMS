@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "phasectl")(type "KiCad")(uri "${KIPRJMOD}/phasectl.kicad_sym")(options "")(descr "Project symbols"))
+)

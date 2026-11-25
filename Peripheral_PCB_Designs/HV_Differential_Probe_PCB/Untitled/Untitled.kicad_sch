@@ -14075,7 +14075,7 @@
 		(dnp no)
 		(uuid "853065d7-024d-4a7a-af31-9a1a041611ef")
 		(property "Reference" "PS1"
-			(at 152.4 218.44 0)
+			(at 152.4 215.392 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects

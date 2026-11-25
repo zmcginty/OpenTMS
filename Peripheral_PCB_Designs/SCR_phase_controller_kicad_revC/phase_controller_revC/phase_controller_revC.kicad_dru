@@ -1,0 +1,21 @@
+(version 1)
+# rev C isolation rules
+# 1) Reinforced isolation: anything at mains / SCR potential (mains input, all gate-output groups) to SELV >= 8 mm
+(rule "Hot to SELV (reinforced)"
+  (condition "(A.NetClass == 'Mains' || A.NetClass == 'GateA1' || A.NetClass == 'GateA2' || A.NetClass == 'GateB1' || A.NetClass == 'GateB2') && !(B.NetClass == 'Mains' || B.NetClass == 'GateA1' || B.NetClass == 'GateA2' || B.NetClass == 'GateB1' || B.NetClass == 'GateB2') && B.NetClass != 'PE'")
+  (constraint clearance (min 8mm)))
+# 2) Between different hot groups (different SCR cathodes / mains): >= 3 mm
+(rule "Hot group to hot group"
+  (condition "(A.NetClass == 'Mains' || A.NetClass == 'GateA1' || A.NetClass == 'GateA2' || A.NetClass == 'GateB1' || A.NetClass == 'GateB2') && (B.NetClass == 'Mains' || B.NetClass == 'GateA1' || B.NetClass == 'GateA2' || B.NetClass == 'GateB1' || B.NetClass == 'GateB2') && A.NetClass != B.NetClass")
+  (constraint clearance (min 3mm)))
+# 3) Mains L-N functional
+(rule "Mains functional (L-N)"
+  (condition "A.NetClass == 'Mains' && B.NetClass == 'Mains'")
+  (constraint clearance (min 2.0mm)))
+# 4) PE copper to hot copper (terminal-block pin pitch excepted)
+(rule "PE copper to hot"
+  (condition "A.NetClass == 'PE' && (B.NetClass == 'Mains' || B.NetClass == 'GateA1' || B.NetClass == 'GateA2' || B.NetClass == 'GateB1' || B.NetClass == 'GateB2') && !(A.Type == 'Pad' && B.Type == 'Pad')")
+  (constraint clearance (min 2.5mm)))
+(rule "PE pin to mains pin"
+  (condition "A.NetClass == 'PE' && (B.NetClass == 'Mains' || B.NetClass == 'GateA1' || B.NetClass == 'GateA2' || B.NetClass == 'GateB1' || B.NetClass == 'GateB2') && A.Type == 'Pad' && B.Type == 'Pad'")
+  (constraint clearance (min 2.0mm)))

@@ -1,0 +1,316 @@
+# SCR Phase Controller rev C: theory of operation (quick reference)
+
+The full illustrated walkthrough is the shared doc "SCR Phase Controller: how it works":
+https://claude.ai/artifact/1izx1xUrTDEexhsYLkHPex
+
+## Signal chain in one line
+
+Mains -> T1 winding A -> sync comparators (HALF_L_POS / HALF_L_NEG) -> U8 NOR -> ZERO_CROSS -> ramp reset;
+ramp (RAMP) vs FIRE_THRESHOLD (= 5 V - CTRL_IN) and ENABLE_IN -> FIRE_AND_ENABLE -> 555 PULSE_TRAIN ->
+74HC08 steering (DRIVE_A in L-positive halves, DRIVE_B in L-negative halves) -> Q5/T2 and Q6/T3 ->
+isolated, rectified gate outputs A1/A2 (J7/J8) and B1/B2 (J9/J10). T1 winding B powers VGDT.
+
+## Net name glossary (old rev B name -> current name)
+
+| Old | New |
+| --- | --- |
+| L_IN | MAINS_L |
+| L_F | MAINS_L_FUSED |
+| N_IN | MAINS_N |
+| SA1 | XFMR_LOGIC_DOT |
+| SA2 | XFMR_LOGIC |
+| SB1 | XFMR_GDT_DOT |
+| SB2 | XFMR_GDT |
+| VRAW | VRAW_LOGIC |
+| VRAWB | VRAW_GDT |
+| ADJ12 | REG12_ADJ |
+| ADJ24 | REG24_ADJ |
+| V24 | +24V_REG |
+| LEDP | LED_POWER |
+| LEDF | LED_FIRING |
+| XP | SYNC_L_SENSE |
+| XN | SYNC_N_SENSE |
+| THI | SYNC_THRESHOLD |
+| POS | HALF_L_POS |
+| NEG | HALF_L_NEG |
+| ZC | ZERO_CROSS |
+| RST_D | RAMP_RESET |
+| Q4B | RAMP_SRC_BASE |
+| RE1 | RAMP_SRC_TRIM |
+| Q4E | RAMP_SRC_EMITTER |
+| CIN | CTRL_CLAMPED |
+| CSC | CTRL_SCALED |
+| VCS | CTRL_BUFFERED |
+| U4A_N | BUF_FEEDBACK |
+| JPG | GAIN_JUMPER |
+| HALF5 | REF_2V5 |
+| U4B_N | INV_INPUT |
+| VTH | FIRE_THRESHOLD |
+| EN | ENABLE_IN |
+| EN_IN | ENABLE_DIV |
+| VREN | ENABLE_REF_1V35 |
+| FIRE_EN | FIRE_AND_ENABLE |
+| CV5 | TIMER_CV |
+| DIS | TIMER_DISCH |
+| TCAP | TIMER_CAP |
+| PULSE | PULSE_TRAIN |
+| DRV_A | DRIVE_A |
+| DRV_B | DRIVE_B |
+| FIRE_BUF | FIRING_5V |
+| SYNC5 | SYNC_5V |
+| SYNC_OUT | SYNC_OUT_3V3 |
+| FIRE_MON | FIRING_OUT_3V3 |
+| GA | Q5_GATE |
+| DA | GDT_A_DRAIN |
+| PA | GDT_A_SUPPLY |
+| CLA | GDT_A_CLAMP |
+| GB | Q6_GATE |
+| DB | GDT_B_DRAIN |
+| PB | GDT_B_SUPPLY |
+| CLB | GDT_B_CLAMP |
+| A1_P | OUT_A1_WINDING_DOT |
+| A1_N | OUT_A1_WINDING |
+| GRA1 | OUT_A1_RECTIFIED |
+| GA1_OUT | OUT_A1_GATE |
+| KA1 | OUT_A1_CATHODE |
+| A2_P | OUT_A2_WINDING_DOT |
+| A2_N | OUT_A2_WINDING |
+| GRA2 | OUT_A2_RECTIFIED |
+| GA2_OUT | OUT_A2_GATE |
+| KA2 | OUT_A2_CATHODE |
+| B1_P | OUT_B1_WINDING_DOT |
+| B1_N | OUT_B1_WINDING |
+| GRB1 | OUT_B1_RECTIFIED |
+| GB1_OUT | OUT_B1_GATE |
+| KB1 | OUT_B1_CATHODE |
+| B2_P | OUT_B2_WINDING_DOT |
+| B2_N | OUT_B2_WINDING |
+| GRB2 | OUT_B2_RECTIFIED |
+| GB2_OUT | OUT_B2_GATE |
+| KB2 | OUT_B2_CATHODE |
+
+## Parts by block
+
+Each block title on the schematic is a one-line description of the block.
+
+### MAINS INPUT 115V + ZETTLER BV301D24028 (2x24V 58mA, 2x42V no-load). Winding A: logic + sync, winding B: gate-drive rail
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| J1 | MAINS L/N/PE (115V) | 1=MAINS_L, 2=MAINS_N, 3=PE |
+| F1 | 100mA T (5x20) | 1=MAINS_L, 2=MAINS_L_FUSED |
+| RV1 | S10K150 | 1=MAINS_L_FUSED, 2=MAINS_N |
+| T1 | BV301D24028 | 1=MAINS_L_FUSED, 5=MAINS_N, 7=XFMR_LOGIC_DOT, 6=XFMR_LOGIC, 10=XFMR_GDT_DOT, 9=XFMR_GDT |
+| H1 | PE bond M3 | 1=PE |
+
+### LOGIC SUPPLY: winding A -> VRAW_LOGIC (33..58V) -> LM317HV 12V -> 7805 5V
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| D1 | MB2S | 1=XFMR_LOGIC_DOT, 2=XFMR_LOGIC, 3=VRAW_LOGIC, 4=GND |
+| C1 | 100u 100V | 1=VRAW_LOGIC, 2=GND |
+| C2 | 100n 100V | 1=VRAW_LOGIC, 2=GND |
+| U1 | LM317HVT | 3=VRAW_LOGIC, 2=+12V, 1=REG12_ADJ |
+| R46 | 240 1% | 1=+12V, 2=REG12_ADJ |
+| R47 | 2k05 1% | 1=REG12_ADJ, 2=GND |
+| C3 | 10u 25V | 1=+12V, 2=GND |
+| C4 | 100n | 1=+12V, 2=GND |
+| U2 | L7805 | 1=+12V, 2=GND, 3=+5V |
+| C5 | 10u 25V | 1=+5V, 2=GND |
+| C6 | 100n | 1=+5V, 2=GND |
+| R1 | 4k7 | 1=+12V, 2=LED_POWER |
+| D5 | GRN PWR | 1=GND, 2=LED_POWER |
+
+### GATE-DRIVE RAIL: winding B -> LM317HV 23.8V -> JP5 (bridged) -> VGDT.  To inject: CUT JP5, feed J6 (<=48V, scale R38/R41)
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| D17 | MB2S | 1=XFMR_GDT_DOT, 2=XFMR_GDT, 3=VRAW_GDT, 4=GND |
+| C23 | 100u 100V | 1=VRAW_GDT, 2=GND |
+| C24 | 100n 100V | 1=VRAW_GDT, 2=GND |
+| U7 | LM317HVT | 3=VRAW_GDT, 2=+24V_REG, 1=REG24_ADJ |
+| R48 | 240 1% | 1=+24V_REG, 2=REG24_ADJ |
+| R49 | 4k32 1% | 1=REG24_ADJ, 2=GND |
+| C25 | 10u 50V | 1=+24V_REG, 2=GND |
+| JP5 | CUT TO INJECT | 1=+24V_REG, 2=VGDT |
+| J6 | EXT GDT SUPPLY <=48V | 1=VGDT, 2=GND |
+| C26 | 100u 63V | 1=VGDT, 2=GND |
+| C27 | 2u2 100V X7R | 1=VGDT, 2=GND |
+
+### SYNC (winding A, in phase with L) -> HALF_L_POS / HALF_L_NEG + ZERO_CROSS window ZERO_CROSS = NOR(HALF_L_POS, HALF_L_NEG) in U8.
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| R2 | 150k | 1=XFMR_LOGIC_DOT, 2=SYNC_L_SENSE |
+| R3 | 20k 1% | 1=+5V, 2=SYNC_L_SENSE |
+| R4 | 20k 1% | 1=SYNC_L_SENSE, 2=GND |
+| C7 | 2n2 C0G | 1=SYNC_L_SENSE, 2=GND |
+| D7 | BAT54S | 1=GND, 2=+5V, 3=SYNC_L_SENSE |
+| R5 | 150k | 1=XFMR_LOGIC, 2=SYNC_N_SENSE |
+| R6 | 20k 1% | 1=+5V, 2=SYNC_N_SENSE |
+| R7 | 20k 1% | 1=SYNC_N_SENSE, 2=GND |
+| C8 | 2n2 C0G | 1=SYNC_N_SENSE, 2=GND |
+| D8 | BAT54S | 1=GND, 2=+5V, 3=SYNC_N_SENSE |
+| R8 | 9k53 1% | 1=+5V, 2=SYNC_THRESHOLD |
+| R9 | 10k2 1% | 1=SYNC_THRESHOLD, 2=GND |
+| C9 | 100n | 1=SYNC_THRESHOLD, 2=GND |
+| U3 | LM339 | 5=SYNC_L_SENSE, 4=SYNC_THRESHOLD, 2=HALF_L_POS, 7=SYNC_N_SENSE, 6=SYNC_THRESHOLD, 1=HALF_L_NEG, 11=RAMP, 10=FIRE_THRESHOLD, 13=FIRE_AND_ENABLE, 9=ENABLE_DIV, 8=ENABLE_REF_1V35, 14=FIRE_AND_ENABLE, 3=+12V, 12=GND |
+| R10 | 2M2 | 1=HALF_L_POS, 2=SYNC_L_SENSE |
+| R11 | 10k | 1=+5V, 2=HALF_L_POS |
+| R12 | 2M2 | 1=HALF_L_NEG, 2=SYNC_N_SENSE |
+| R13 | 10k | 1=+5V, 2=HALF_L_NEG |
+| U8 | 74AHC1G02 | 1=HALF_L_POS, 2=HALF_L_NEG, 3=GND, 4=ZERO_CROSS, 5=+5V |
+| C32 | 100n | 1=+5V, 2=GND |
+
+### LINEAR RAMP (constant-current PNP, reset every zero crossing). RV2: set ramp peak = 4.8V on TP1 RAMP
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| R22 | 10k | 1=+12V, 2=RAMP_SRC_BASE |
+| R23 | 47k | 1=RAMP_SRC_BASE, 2=GND |
+| C14 | 100n | 1=+12V, 2=RAMP_SRC_BASE |
+| R24 | 22k | 1=+12V, 2=RAMP_SRC_TRIM |
+| RV2 | 10k RAMP CAL | 1=RAMP_SRC_TRIM, 2=RAMP_SRC_EMITTER, 3=RAMP_SRC_EMITTER |
+| Q4 | MMBT3906 | 1=RAMP_SRC_BASE, 2=RAMP_SRC_EMITTER, 3=RAMP |
+| C13 | 100n film (MKS2) | 1=RAMP, 2=GND |
+| Q3 | 2N7002 | 1=ZERO_CROSS, 2=GND, 3=RAMP_RESET |
+| R21 | 100 | 1=RAMP_RESET, 2=RAMP |
+
+### CONTROL INPUT 0-5V (JP4 fitted: 0-3.3V) -> FIRE_THRESHOLD = 5V - Vin.  0V = OFF (180 deg), 5V = full ON
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| R25 | 1k | 1=CTRL_IN, 2=CTRL_CLAMPED |
+| R26 | 100k | 1=CTRL_CLAMPED, 2=GND |
+| C15 | 10n | 1=CTRL_CLAMPED, 2=GND |
+| D10 | BAT54S | 1=GND, 2=+5V, 3=CTRL_CLAMPED |
+| RV3 | 10k MAX POWER | 1=CTRL_CLAMPED, 2=CTRL_SCALED, 3=GND |
+| U4 | MCP6002 | 3=CTRL_SCALED, 2=BUF_FEEDBACK, 1=CTRL_BUFFERED, 5=REF_2V5, 6=INV_INPUT, 7=FIRE_THRESHOLD, 8=+5V, 4=GND |
+| R27 | 5k1 | 1=CTRL_BUFFERED, 2=BUF_FEEDBACK |
+| R28 | 10k | 1=BUF_FEEDBACK, 2=GAIN_JUMPER |
+| JP4 | 3V3 IN GAIN x1.51 | 1=GAIN_JUMPER, 2=GND |
+| R29 | 10k 0.1% | 1=+5V, 2=REF_2V5 |
+| R30 | 10k 0.1% | 1=REF_2V5, 2=GND |
+| C16 | 100n | 1=REF_2V5, 2=GND |
+| R31 | 10k 0.1% | 1=CTRL_BUFFERED, 2=INV_INPUT |
+| R32 | 10k 0.1% | 1=INV_INPUT, 2=FIRE_THRESHOLD |
+| C22 | 100n | 1=+5V, 2=GND |
+
+### FIRE_AND_ENABLE = (RAMP > FIRE_THRESHOLD) AND (ENABLE_IN > 1.35V).  ENABLE_IN low/floating = NO GATE PULSES
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| R14 | 10k | 1=+5V, 2=FIRE_AND_ENABLE |
+| C10 | 470p | 1=FIRE_AND_ENABLE, 2=GND |
+| R15 | 4k7 | 1=ENABLE_IN, 2=ENABLE_DIV |
+| R16 | 47k | 1=ENABLE_DIV, 2=GND |
+| D9 | BAT54S | 1=GND, 2=+5V, 3=ENABLE_DIV |
+| R17 | 27k | 1=+5V, 2=ENABLE_REF_1V35 |
+| R18 | 10k | 1=ENABLE_REF_1V35, 2=GND |
+| C11 | 100n | 1=ENABLE_REF_1V35, 2=GND |
+| C12 | 100n | 1=+12V, 2=GND |
+
+### GATED PULSE TRAIN (~15kHz: ~7us ON, first pulse ~10us; keeps P0584ANL < 2100 G) + STEERING DRIVE_A = PULSE_TRAIN & HALF_L_POS, DRIVE_B = PULSE_TRAIN & HALF_L_NEG
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| U5 | TLC555 | 1=GND, 2=TIMER_CAP, 3=PULSE_TRAIN, 4=FIRE_AND_ENABLE, 5=TIMER_CV, 6=TIMER_CAP, 7=TIMER_DISCH, 8=+5V |
+| R33 | 3k3 | 1=+5V, 2=TIMER_DISCH |
+| R34 | 39k | 1=TIMER_DISCH, 2=TIMER_CAP |
+| D11 | 1N4148W | 1=TIMER_CAP, 2=TIMER_DISCH |
+| C18 | 2n2 C0G | 1=TIMER_CAP, 2=GND |
+| C17 | 10n | 1=TIMER_CV, 2=GND |
+| C19 | 100n | 1=+5V, 2=GND |
+| U6 | 74HC08 | 1=PULSE_TRAIN, 2=HALF_L_POS, 3=DRIVE_A, 4=PULSE_TRAIN, 5=HALF_L_NEG, 6=DRIVE_B, 9=FIRE_AND_ENABLE, 10=FIRE_AND_ENABLE, 8=FIRING_5V, 12=HALF_L_POS, 13=HALF_L_POS, 11=SYNC_5V, 14=+5V, 7=GND |
+| C20 | 100n | 1=+5V, 2=GND |
+
+### GDT DRIVER A: VGDT -> R38||R50 (sets pulse current) -> P0584ANL T2 -> Q5.  D13+D14 reset the core (~16V).  C27 = local 2u2 at Q5 source.
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| R36 | 22 | 1=DRIVE_A, 2=Q5_GATE |
+| R37 | 10k | 1=Q5_GATE, 2=GND |
+| Q5 | FQD13N10L | 1=Q5_GATE, 2=GDT_A_DRAIN, 3=GND |
+| R38 | 120R 1W | 1=VGDT, 2=GDT_A_SUPPLY |
+| R50 | 120R 1W | 1=VGDT, 2=GDT_A_SUPPLY |
+| D13 | ES1D | 1=GDT_A_CLAMP, 2=GDT_A_DRAIN |
+| D14 | BZT52C15 | 1=GDT_A_CLAMP, 2=GDT_A_SUPPLY |
+| T2 | P0584ANL | 1=GDT_A_SUPPLY, 10=GDT_A_DRAIN, 3=OUT_A1_WINDING_DOT, 4=OUT_A1_WINDING, 8=OUT_A2_WINDING_DOT, 7=OUT_A2_WINDING |
+
+### GDT DRIVER B: VGDT -> R41||R51 -> P0584ANL T3 -> Q6.  C33 = local 2u2 at Q6 source.
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| R39 | 22 | 1=DRIVE_B, 2=Q6_GATE |
+| R40 | 10k | 1=Q6_GATE, 2=GND |
+| Q6 | FQD13N10L | 1=Q6_GATE, 2=GDT_B_DRAIN, 3=GND |
+| R41 | 120R 1W | 1=VGDT, 2=GDT_B_SUPPLY |
+| R51 | 120R 1W | 1=VGDT, 2=GDT_B_SUPPLY |
+| D15 | ES1D | 1=GDT_B_CLAMP, 2=GDT_B_DRAIN |
+| D16 | BZT52C15 | 1=GDT_B_CLAMP, 2=GDT_B_SUPPLY |
+| T3 | P0584ANL | 1=GDT_B_SUPPLY, 10=GDT_B_DRAIN, 3=OUT_B1_WINDING_DOT, 4=OUT_B1_WINDING, 8=OUT_B2_WINDING_DOT, 7=OUT_B2_WINDING |
+| C33 | 2u2 100V X7R | 1=VGDT, 2=GND |
+
+### ISOLATED GATE OUTPUTS, CH A (fires when L positive). Schottky bridge makes each output polarity-proof. Each output floats at its SCR cathode
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| D22 | SMAJ15CA | 1=OUT_A1_WINDING_DOT, 2=OUT_A1_WINDING |
+| D23 | CDBHM140-HF | 1=OUT_A1_WINDING_DOT, 2=OUT_A1_WINDING, 3=OUT_A1_RECTIFIED, 4=OUT_A1_CATHODE |
+| R52 | 2R2 | 1=OUT_A1_RECTIFIED, 2=OUT_A1_GATE |
+| R53 | 100 | 1=OUT_A1_GATE, 2=OUT_A1_CATHODE |
+| C28 | 10n | 1=OUT_A1_GATE, 2=OUT_A1_CATHODE |
+| D27 | 1N4148W | 1=OUT_A1_GATE, 2=OUT_A1_CATHODE |
+| J7 | GATE A1 (G,K) | 1=OUT_A1_GATE, 2=OUT_A1_CATHODE |
+| D28 | SMAJ15CA | 1=OUT_A2_WINDING_DOT, 2=OUT_A2_WINDING |
+| D29 | CDBHM140-HF | 1=OUT_A2_WINDING_DOT, 2=OUT_A2_WINDING, 3=OUT_A2_RECTIFIED, 4=OUT_A2_CATHODE |
+| R54 | 2R2 | 1=OUT_A2_RECTIFIED, 2=OUT_A2_GATE |
+| R55 | 100 | 1=OUT_A2_GATE, 2=OUT_A2_CATHODE |
+| C29 | 10n | 1=OUT_A2_GATE, 2=OUT_A2_CATHODE |
+| D33 | 1N4148W | 1=OUT_A2_GATE, 2=OUT_A2_CATHODE |
+| J8 | GATE A2 (G,K) | 1=OUT_A2_GATE, 2=OUT_A2_CATHODE |
+
+### ISOLATED GATE OUTPUTS, CH B (fires when L negative)
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| D34 | SMAJ15CA | 1=OUT_B1_WINDING_DOT, 2=OUT_B1_WINDING |
+| D35 | CDBHM140-HF | 1=OUT_B1_WINDING_DOT, 2=OUT_B1_WINDING, 3=OUT_B1_RECTIFIED, 4=OUT_B1_CATHODE |
+| R56 | 2R2 | 1=OUT_B1_RECTIFIED, 2=OUT_B1_GATE |
+| R57 | 100 | 1=OUT_B1_GATE, 2=OUT_B1_CATHODE |
+| C30 | 10n | 1=OUT_B1_GATE, 2=OUT_B1_CATHODE |
+| D39 | 1N4148W | 1=OUT_B1_GATE, 2=OUT_B1_CATHODE |
+| J9 | GATE B1 (G,K) | 1=OUT_B1_GATE, 2=OUT_B1_CATHODE |
+| D40 | SMAJ15CA | 1=OUT_B2_WINDING_DOT, 2=OUT_B2_WINDING |
+| D41 | CDBHM140-HF | 1=OUT_B2_WINDING_DOT, 2=OUT_B2_WINDING, 3=OUT_B2_RECTIFIED, 4=OUT_B2_CATHODE |
+| R58 | 2R2 | 1=OUT_B2_RECTIFIED, 2=OUT_B2_GATE |
+| R59 | 100 | 1=OUT_B2_GATE, 2=OUT_B2_CATHODE |
+| C31 | 10n | 1=OUT_B2_GATE, 2=OUT_B2_CATHODE |
+| D45 | 1N4148W | 1=OUT_B2_GATE, 2=OUT_B2_CATHODE |
+| J10 | GATE B2 (G,K) | 1=OUT_B2_GATE, 2=OUT_B2_CATHODE |
+
+### CONTROL HEADER (3.3V-safe outputs), INDICATORS, TEST POINTS, MOUNTING
+
+| Ref | Value | Pins -> nets |
+| --- | --- | --- |
+| J3 | CONTROL (Teensy) | 1=GND, 2=CTRL_IN, 3=ENABLE_IN, 4=SYNC_OUT_3V3, 5=FIRING_OUT_3V3, 6=GND |
+| R42 | 1k | 1=SYNC_5V, 2=SYNC_OUT_3V3 |
+| R43 | 2k | 1=SYNC_OUT_3V3, 2=GND |
+| R44 | 1k | 1=FIRING_5V, 2=FIRING_OUT_3V3 |
+| R45 | 2k | 1=FIRING_OUT_3V3, 2=GND |
+| R35 | 1k | 1=FIRING_5V, 2=LED_FIRING |
+| D12 | YEL FIRING | 1=GND, 2=LED_FIRING |
+| TP1 | RAMP | 1=RAMP |
+| TP2 | FIRE_THRESHOLD | 1=FIRE_THRESHOLD |
+| TP3 | HALF_L_POS | 1=HALF_L_POS |
+| TP4 | HALF_L_NEG | 1=HALF_L_NEG |
+| TP5 | ZERO_CROSS | 1=ZERO_CROSS |
+| TP6 | FIRE_AND_ENABLE | 1=FIRE_AND_ENABLE |
+| TP7 | PULSE_TRAIN | 1=PULSE_TRAIN |
+| TP8 | GND | 1=GND |
+| TP9 | SYNC_L_SENSE | 1=SYNC_L_SENSE |
+| TP10 | GND | 1=GND |
+| H2 | M3 |  |
+| H3 | M3 |  |
+| H4 | M3 |  |
+| TP11 | VGDT | 1=VGDT |
